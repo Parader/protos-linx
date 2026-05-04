@@ -9,7 +9,7 @@ import { InputBase } from "@/components/base/input/input";
 import { Dialog, DialogTrigger, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { useVersionC } from "@/pages/version-c/version-c-context";
-import { BOARD_COLUMN_META, fullName, movePatientToStatus } from "@/pages/version-c/version-c-shared";
+import { BOARD_COLUMN_META, fullName, movePatientToStatus, patientStatusLabelFr } from "@/pages/version-c/version-c-shared";
 import { VersionCPatientCard, VersionCPatientCardOverlay } from "@/pages/version-c/version-c-patient-card";
 import { VersionCAddPatientModal } from "@/pages/version-c/version-c-add-patient-modal";
 import { VersionCSinglePatientMessageModal } from "@/pages/version-c/version-c-single-patient-message-modal";
@@ -57,6 +57,7 @@ export function VersionCWorklistPage() {
         setQuery,
         patients,
         setPatients,
+        appendActivityLog,
         patientsByColumn,
         activePatient,
         sensors,
@@ -140,6 +141,13 @@ export function VersionCWorklistPage() {
                                                                             setConfirmClear(true);
                                                                             return;
                                                                         }
+                                                                        appendActivityLog({
+                                                                            kind: "board_cleared",
+                                                                            patientId: null,
+                                                                            patientLabel: "—",
+                                                                            summary: "Liste effacée",
+                                                                            detail: `${patients.length} dossier${patients.length > 1 ? "s" : ""} supprimé${patients.length > 1 ? "s" : ""}.`,
+                                                                        });
                                                                         setPatients([]);
                                                                         setConfirmClear(false);
                                                                         close();
@@ -243,7 +251,17 @@ export function VersionCWorklistPage() {
                                                             key={p.id}
                                                             patient={p}
                                                             onSelect={() => setSelectedPatientId(p.id)}
-                                                            onMoveTo={(next) => setPatients((prev) => movePatientToStatus(prev, p.id, next))}
+                                                            onMoveTo={(next) => {
+                                                                if (p.status === next) return;
+                                                                appendActivityLog({
+                                                                    kind: "status_menu",
+                                                                    patientId: p.id,
+                                                                    patientLabel: `${fullName(p)} — ${p.fileNumber}`,
+                                                                    summary: "Changement de statut",
+                                                                    detail: `${patientStatusLabelFr(p.status)} → ${patientStatusLabelFr(next)}`,
+                                                                });
+                                                                setPatients((prev) => movePatientToStatus(prev, p.id, next));
+                                                            }}
                                                         />
                                                     ))}
                                                 </SortableContext>

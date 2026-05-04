@@ -6,28 +6,89 @@ import { Tabs } from "@/components/application/tabs/tabs";
 import { cx } from "@/utils/cx";
 import { useVersionC } from "@/pages/version-c/version-c-context";
 import {
-    fullName,
     statusToColumn,
+    type ActivityLogKind,
     type BoardColumnId,
     type NotificationChannel,
-    type NotificationDirection,
-    type NotificationEntry,
     type Patient,
     type PatientCompletionCause,
 } from "@/pages/version-c/version-c-shared";
 
 type ReportTab = "stats" | "journal";
+type JournalScopeFilter = "all" | "messages" | "worklist";
+type CompletedPatientFilter = "all" | "completed_only";
 
-type HistoryRow = {
-    key: string;
-    sentAt: number;
-    patientId: string;
-    patientLabel: string;
-    channel: NotificationChannel;
-    direction: NotificationDirection;
-    bodyPreview: string;
-    tags: string[];
-};
+function isMessageKind(kind: ActivityLogKind): boolean {
+    return kind === "message_outbound" || kind === "message_inbound";
+}
+
+function activityKindLabelFr(kind: ActivityLogKind): string {
+    switch (kind) {
+        case "message_outbound":
+            return "Message sortant";
+        case "message_inbound":
+            return "Message entrant";
+        case "patient_added":
+            return "Ajout patient";
+        case "demo_patients_added":
+            return "Ajout démo";
+        case "patient_edited":
+            return "Fiche modifiée";
+        case "status_menu":
+            return "Statut (menu)";
+        case "status_drag":
+            return "Statut (glisser)";
+        case "consent_accepted":
+            return "Consentement accepté";
+        case "consent_refused":
+            return "Consentement refusé";
+        case "consent_withdrawn":
+            return "Retrait consentement";
+        case "return_confirmed":
+            return "Retour confirmé";
+        case "patient_left_queue_via_link":
+            return "Annul. patient (lien)";
+        case "staff_cancelled":
+            return "Annul. équipe";
+        case "board_cleared":
+            return "Liste effacée";
+        default:
+            return kind;
+    }
+}
+
+function activityKindSearchExtras(kind: ActivityLogKind): string {
+    switch (kind) {
+        case "message_outbound":
+            return "sms courriel email sortant envoi";
+        case "message_inbound":
+            return "sms courriel email entrant réponse";
+        case "patient_added":
+            return "nouveau inscription file";
+        case "demo_patients_added":
+            return "démonstration lot paramètres";
+        case "patient_edited":
+            return "modification dossier coordonnées";
+        case "status_menu":
+        case "status_drag":
+            return "colonne attente rappel terminé déplacement carte";
+        case "consent_accepted":
+            return "accord plateforme";
+        case "consent_refused":
+        case "consent_withdrawn":
+            return "fermeture annulation service distance";
+        case "return_confirmed":
+            return "arrivée urgence";
+        case "patient_left_queue_via_link":
+            return "public confirmation";
+        case "staff_cancelled":
+            return "motif équipe soignant";
+        case "board_cleared":
+            return "reset effacer vider";
+        default:
+            return "";
+    }
+}
 
 function causeLabelFr(cause: PatientCompletionCause | undefined): string {
     switch (cause) {
@@ -103,36 +164,31 @@ function StatCard({
     );
 }
 
-function buildHistoryRows(patients: Patient[], notificationsByPatient: Record<string, NotificationEntry[]>): HistoryRow[] {
-    const rows: HistoryRow[] = [];
-    for (const p of patients) {
-        const list = notificationsByPatient[p.id] ?? [];
-        const label = `${fullName(p)} — ${p.fileNumber}`;
-        for (const e of list) {
-            const tags: string[] = [];
-            if (e.consentUrl) tags.push("consentement");
-            if (e.actionUrl) tags.push("action");
-            rows.push({
-                key: `${p.id}:${e.id}`,
-                sentAt: e.sentAt,
-                patientId: p.id,
-                patientLabel: label,
-                channel: e.channel,
-                direction: e.direction,
-                bodyPreview: e.body.length > 120 ? `${e.body.slice(0, 120)}…` : e.body,
-                tags,
-            });
-        }
+function kindBadgeClass(kind: ActivityLogKind): string {
+    if (isMessageKind(kind)) {
+        return kind === "message_outbound"
+            ? "bg-[#EFF8FF] text-[#175CD3] ring-[#B2DDFF]"
+            : "bg-[#F9FAFB] text-[#475467] ring-[#E4E7EC]";
     }
-    rows.sort((a, b) => b.sentAt - a.sentAt);
-    return rows;
+    if (
+        kind === "board_cleared" ||
+        kind === "staff_cancelled" ||
+        kind === "consent_refused" ||
+        kind === "consent_withdrawn"
+    ) {
+        return "bg-[#FFF1F3] text-[#C01048] ring-[#FFE4E8]";
+    }
+    if (kind === "demo_patients_added") return "bg-[#FFFAEB] text-[#B54708] ring-[#FEF0C7]";
+    return "bg-[#ECFDF3] text-[#027A48] ring-[#D1FADF]";
 }
 
 export function VersionCReportsPage() {
-    const { patients, patientsByColumn, notificationsByPatient } = useVersionC();
+    const { patients, patientsByColumn, notificationsByPatient, activityLog } = useVersionC();
     const [tab, setTab] = useState<ReportTab>("stats");
     const [journalQuery, setJournalQuery] = useState("");
     const [channelFilter, setChannelFilter] = useState<"all" | NotificationChannel>("all");
+    const [scopeFilter, setScopeFilter] = useState<JournalScopeFilter>("all");
+    const [completedPatientFilter, setCompletedPatientFilter] = useState<CompletedPatientFilter>("all");
 
     const stats = useMemo(() => {
         const total = patients.length;
@@ -192,21 +248,43 @@ export function VersionCReportsPage() {
         };
     }, [patients, patientsByColumn, notificationsByPatient]);
 
-    const historyRows = useMemo(() => buildHistoryRows(patients, notificationsByPatient), [patients, notificationsByPatient]);
+    const sortedActivity = useMemo(() => [...activityLog].sort((a, b) => b.at - a.at), [activityLog]);
+
+    const patientById = useMemo(() => {
+        const m = new Map<string, Patient>();
+        for (const p of patients) m.set(p.id, p);
+        return m;
+    }, [patients]);
 
     const filteredJournal = useMemo(() => {
         const q = journalQuery.trim().toLowerCase();
-        return historyRows.filter((r) => {
-            if (channelFilter !== "all" && r.channel !== channelFilter) return false;
+        return sortedActivity.filter((row) => {
+            if (scopeFilter === "messages" && !isMessageKind(row.kind)) return false;
+            if (scopeFilter === "worklist" && isMessageKind(row.kind)) return false;
+
+            if (channelFilter !== "all" && isMessageKind(row.kind) && row.channel !== channelFilter) return false;
+
+            if (completedPatientFilter === "completed_only") {
+                if (!row.patientId) return false;
+                const p = patientById.get(row.patientId);
+                if (!p || p.status !== "completed") return false;
+            }
+
             if (!q) return true;
-            return (
-                r.patientLabel.toLowerCase().includes(q) ||
-                r.bodyPreview.toLowerCase().includes(q) ||
-                r.channel.toLowerCase().includes(q) ||
-                (r.direction === "outbound" ? "sortant" : "entrant").includes(q)
-            );
+            const hay = [
+                row.patientLabel,
+                row.summary,
+                row.detail ?? "",
+                activityKindLabelFr(row.kind),
+                activityKindSearchExtras(row.kind),
+                row.channel ?? "",
+                row.direction ?? "",
+            ]
+                .join(" ")
+                .toLowerCase();
+            return hay.includes(q);
         });
-    }, [historyRows, journalQuery, channelFilter]);
+    }, [sortedActivity, scopeFilter, channelFilter, completedPatientFilter, patientById, journalQuery]);
 
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#F2F4F7]">
@@ -215,8 +293,8 @@ export function VersionCReportsPage() {
                     <div>
                         <h1 className="text-2xl font-medium tracking-tight text-[#101828]">Rapports et statistiques</h1>
                         <p className="mt-1 max-w-3xl text-sm text-[#667085]">
-                            Tableau de bord démo : agrégats sur la file d’attente Version C et journal des communications enregistrées dans la session
-                            (SMS / courriel).
+                            Tableau de bord démo : agrégats sur la file d’attente Version C. Le journal d’activité regroupe les communications (SMS /
+                            courriel) et les changements sur la liste (statuts, consentements, annulations, etc.) pour la session courante.
                         </p>
                     </div>
                     <Tabs
@@ -235,9 +313,9 @@ export function VersionCReportsPage() {
                                 <span className="flex items-center gap-2">
                                     <Activity className="size-4" strokeWidth={1.75} aria-hidden />
                                     Journal d’activité
-                                    {historyRows.length > 0 ? (
+                                    {activityLog.length > 0 ? (
                                         <span className="rounded-full bg-[#F2F4F7] px-1.5 py-0.5 text-[11px] font-medium text-[#475467] ring-1 ring-[#E4E7EC]">
-                                            {historyRows.length}
+                                            {activityLog.length}
                                         </span>
                                     ) : null}
                                 </span>
@@ -369,30 +447,72 @@ export function VersionCReportsPage() {
                     </>
                 ) : (
                     <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#E4E7EC] bg-white shadow-sm">
-                        <div className="flex flex-col gap-4 border-b border-[#F2F4F7] p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-4 border-b border-[#F2F4F7] p-4 sm:p-5">
                             <div>
-                                <h2 className="text-base font-semibold text-[#101828]">Historique des communications</h2>
+                                <h2 className="text-base font-semibold text-[#101828]">Journal d’activité</h2>
                                 <p className="mt-0.5 text-sm text-[#667085]">
-                                    Tous les patients — tri du plus récent au plus ancien. Données de la session courante.
+                                    Communications et événements de la liste — tri du plus récent au plus ancien (session courante).
                                 </p>
                             </div>
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <select
-                                    className="rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#344054] shadow-xs"
-                                    value={channelFilter}
-                                    onChange={(e) => setChannelFilter(e.target.value as "all" | NotificationChannel)}
-                                >
-                                    <option value="all">Tous canaux</option>
-                                    <option value="sms">SMS</option>
-                                    <option value="email">Courriel</option>
-                                </select>
-                                <InputBase
-                                    icon={SearchLg}
-                                    placeholder="Filtrer (patient, texte…)"
-                                    value={journalQuery}
-                                    onChange={(e) => setJournalQuery(e.target.value)}
-                                    wrapperClassName="bg-white min-w-[220px]"
-                                />
+                            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+                                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                    <label htmlFor="vc-journal-search" className="text-xs font-medium text-[#667085]">
+                                        Recherche
+                                    </label>
+                                    <InputBase
+                                        id="vc-journal-search"
+                                        icon={SearchLg}
+                                        placeholder="Patient, type d’événement, texte du message…"
+                                        value={journalQuery}
+                                        onChange={(e) => setJournalQuery(e.target.value)}
+                                        wrapperClassName="bg-white w-full min-w-0"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1.5 sm:min-w-[11rem]">
+                                    <label htmlFor="vc-journal-scope" className="text-xs font-medium text-[#667085]">
+                                        Type d’entrée
+                                    </label>
+                                    <select
+                                        id="vc-journal-scope"
+                                        className="rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#344054] shadow-xs"
+                                        value={scopeFilter}
+                                        onChange={(e) => setScopeFilter(e.target.value as JournalScopeFilter)}
+                                    >
+                                        <option value="all">Toutes les entrées</option>
+                                        <option value="messages">Communications seulement</option>
+                                        <option value="worklist">Liste (sans messages)</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-1.5 sm:min-w-[11rem]">
+                                    <label htmlFor="vc-journal-channel" className="text-xs font-medium text-[#667085]">
+                                        Canal (messages)
+                                    </label>
+                                    <select
+                                        id="vc-journal-channel"
+                                        className="rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#344054] shadow-xs disabled:opacity-50"
+                                        value={channelFilter}
+                                        disabled={scopeFilter === "worklist"}
+                                        onChange={(e) => setChannelFilter(e.target.value as "all" | NotificationChannel)}
+                                    >
+                                        <option value="all">Tous canaux</option>
+                                        <option value="sms">SMS</option>
+                                        <option value="email">Courriel</option>
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-1.5 sm:min-w-[12.5rem]">
+                                    <label htmlFor="vc-journal-completed" className="text-xs font-medium text-[#667085]">
+                                        Dossiers
+                                    </label>
+                                    <select
+                                        id="vc-journal-completed"
+                                        className="rounded-lg border border-[#D0D5DD] bg-white px-3 py-2 text-sm text-[#344054] shadow-xs"
+                                        value={completedPatientFilter}
+                                        onChange={(e) => setCompletedPatientFilter(e.target.value as CompletedPatientFilter)}
+                                    >
+                                        <option value="all">Tous les dossiers</option>
+                                        <option value="completed_only">Terminés uniquement</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div className="min-h-0 flex-1 overflow-auto">
@@ -400,68 +520,72 @@ export function VersionCReportsPage() {
                                 <thead className="sticky top-0 z-10 bg-[#F9FAFB] text-xs font-semibold uppercase tracking-wide text-[#667085] ring-1 ring-[#E4E7EC]">
                                     <tr>
                                         <th className="whitespace-nowrap px-4 py-3">Date / heure</th>
+                                        <th className="whitespace-nowrap px-4 py-3">Type</th>
                                         <th className="whitespace-nowrap px-4 py-3">Patient</th>
+                                        <th className="px-4 py-3">Résumé</th>
                                         <th className="whitespace-nowrap px-4 py-3">Canal</th>
-                                        <th className="whitespace-nowrap px-4 py-3">Sens</th>
-                                        <th className="px-4 py-3">Aperçu</th>
-                                        <th className="whitespace-nowrap px-4 py-3">Liens</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#F2F4F7]">
                                     {filteredJournal.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-[#667085]">
-                                                {historyRows.length === 0
-                                                    ? "Aucun message enregistré. Ajoutez des patients ou envoyez des messages depuis la liste."
-                                                    : "Aucun résultat pour ce filtre."}
+                                            <td colSpan={5} className="px-4 py-12 text-center text-sm text-[#667085]">
+                                                {sortedActivity.length === 0
+                                                    ? "Aucune activité enregistrée. Utilisez la liste de travail pour ajouter des patients, déplacer des cartes ou envoyer des messages."
+                                                    : "Aucun résultat pour ces filtres ou cette recherche."}
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredJournal.map((r) => {
-                                            const pRow = patients.find((p) => p.id === r.patientId);
-                                            const colNow = pRow ? statusToColumn(pRow.status) : "—";
+                                            const pRow = r.patientId ? patientById.get(r.patientId) : undefined;
+                                            const colNow: BoardColumnId | "—" = pRow ? statusToColumn(pRow.status) : "—";
                                             return (
-                                            <tr key={r.key} className="align-top hover:bg-[#FAFBFC]">
-                                                <td className="whitespace-nowrap px-4 py-3 text-[#475467]">{formatDateTime(r.sentAt)}</td>
-                                                <td className="max-w-[200px] px-4 py-3">
-                                                    <span className="line-clamp-2 font-medium text-[#101828]" title={r.patientLabel}>
-                                                        {r.patientLabel}
-                                                    </span>
-                                                    <span className="mt-0.5 block text-xs text-[#98A2B3]">
-                                                        Colonne {columnLabelFr(colNow)}
-                                                    </span>
-                                                </td>
-                                                <td className="whitespace-nowrap px-4 py-3">
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#F2F4F7] px-2 py-0.5 text-xs font-medium text-[#344054] ring-1 ring-[#E4E7EC]">
-                                                        {r.channel === "sms" ? (
-                                                            <Phone01 className="size-3.5" strokeWidth={1.75} aria-hidden />
+                                                <tr key={r.id} className="align-top hover:bg-[#FAFBFC]">
+                                                    <td className="whitespace-nowrap px-4 py-3 text-[#475467]">{formatDateTime(r.at)}</td>
+                                                    <td className="whitespace-nowrap px-4 py-3">
+                                                        <span
+                                                            className={cx(
+                                                                "inline-flex max-w-[12rem] truncate rounded-full px-2 py-0.5 text-xs font-medium ring-1",
+                                                                kindBadgeClass(r.kind),
+                                                            )}
+                                                            title={activityKindLabelFr(r.kind)}
+                                                        >
+                                                            {activityKindLabelFr(r.kind)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="max-w-[220px] px-4 py-3">
+                                                        <span className="line-clamp-2 font-medium text-[#101828]" title={r.patientLabel}>
+                                                            {r.patientLabel}
+                                                        </span>
+                                                        {pRow ? (
+                                                            <span className="mt-0.5 block text-xs text-[#98A2B3]">
+                                                                Colonne {columnLabelFr(colNow)}
+                                                            </span>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="max-w-md px-4 py-3">
+                                                        <p className="font-medium text-[#101828]">{r.summary}</p>
+                                                        {r.detail ? (
+                                                            <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[#475467]" title={r.detail}>
+                                                                {r.detail}
+                                                            </p>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-4 py-3 text-[#667085]">
+                                                        {isMessageKind(r.kind) && r.channel ? (
+                                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#F2F4F7] px-2 py-0.5 text-xs font-medium text-[#344054] ring-1 ring-[#E4E7EC]">
+                                                                {r.channel === "sms" ? (
+                                                                    <Phone01 className="size-3.5" strokeWidth={1.75} aria-hidden />
+                                                                ) : (
+                                                                    <Mail01 className="size-3.5" strokeWidth={1.75} aria-hidden />
+                                                                )}
+                                                                {r.channel === "sms" ? "SMS" : "Courriel"}
+                                                            </span>
                                                         ) : (
-                                                            <Mail01 className="size-3.5" strokeWidth={1.75} aria-hidden />
+                                                            "—"
                                                         )}
-                                                        {r.channel === "sms" ? "SMS" : "Courriel"}
-                                                    </span>
-                                                </td>
-                                                <td className="whitespace-nowrap px-4 py-3">
-                                                    <span
-                                                        className={cx(
-                                                            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1",
-                                                            r.direction === "outbound"
-                                                                ? "bg-[#EFF8FF] text-[#175CD3] ring-[#B2DDFF]"
-                                                                : "bg-[#F9FAFB] text-[#475467] ring-[#E4E7EC]",
-                                                        )}
-                                                    >
-                                                        {r.direction === "outbound" ? "Sortant" : "Entrant"}
-                                                    </span>
-                                                </td>
-                                                <td className="max-w-md px-4 py-3">
-                                                    <p className="line-clamp-3 whitespace-pre-wrap text-[#475467]" title={r.bodyPreview}>
-                                                        {r.bodyPreview}
-                                                    </p>
-                                                </td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-xs text-[#667085]">
-                                                    {r.tags.length ? r.tags.join(", ") : "—"}
-                                                </td>
-                                            </tr>
+                                                    </td>
+                                                </tr>
                                             );
                                         })
                                     )}

@@ -253,8 +253,7 @@ export function VersionCAddPatientModalWizard() {
                         <div className="w-full max-w-[960px] rounded-xl bg-[#F9FAFB] shadow-lg ring-1 ring-[#E2E5EB]">
                             <div className="flex items-start justify-between gap-4 border-b border-[#E4E7EC] p-5 sm:p-6">
                                 <div className="min-w-0">
-                                    <div className="text-xs font-medium text-[#667085]">Ajout guidé (essai UX)</div>
-                                    <h2 className="mt-1 text-xl font-semibold text-[#101828] sm:text-2xl">Nouveau patient</h2>
+                                    <h2 className="text-xl font-semibold text-[#101828] sm:text-2xl">Nouveau patient</h2>
                                     <div className="mt-3 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[#E4E7EC]">
                                         <div
                                             className="h-full rounded-full bg-[#0573D8] transition-[width] duration-300 ease-out"

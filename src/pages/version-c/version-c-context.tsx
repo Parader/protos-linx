@@ -6,7 +6,7 @@ import {
     type DragEndEvent,
     type DragStartEvent,
 } from "@dnd-kit/core";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
     comparePatientsByArrivalAsc,
     comparePatientsCompletedDesc,
@@ -14,8 +14,10 @@ import {
     defaultStatusForNewPatient,
     fullName,
     movePatientToStatus,
+    patientStatusLabelFr,
     statusToColumn,
     statusWhenDroppedOnColumn,
+    type ActivityLogEntry,
     type BoardColumnId,
     type NotificationChannel,
     type NotificationDirection,
@@ -90,6 +92,9 @@ export type VersionCContextValue = {
     setCancelModalPatientId: (id: string | null) => void;
     singleMessagePatientId: string | null;
     setSingleMessagePatientId: (id: string | null) => void;
+
+    activityLog: ActivityLogEntry[];
+    appendActivityLog: (entry: Omit<ActivityLogEntry, "id" | "at"> & { at?: number }) => void;
 };
 
 const VersionCContext = createContext<VersionCContextValue | null>(null);
@@ -192,11 +197,32 @@ function sendConsentInvites(
 export function VersionCProvider({ children }: { children: ReactNode }) {
     const [query, setQuery] = useState("");
     const [patients, setPatients] = useState<Patient[]>([]);
+    const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
     const [notificationsByPatient, setNotificationsByPatient] = useState<Record<string, NotificationEntry[]>>({});
 
+    const patientsRef = useRef(patients);
+    useEffect(() => {
+        patientsRef.current = patients;
+    }, [patients]);
+
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+    const appendActivityLog = useCallback((entry: Omit<ActivityLogEntry, "id" | "at"> & { at?: number }) => {
+        const row: ActivityLogEntry = {
+            id: createId(),
+            at: entry.at ?? Date.now(),
+            kind: entry.kind,
+            patientId: entry.patientId,
+            patientLabel: entry.patientLabel,
+            summary: entry.summary,
+            detail: entry.detail,
+            channel: entry.channel,
+            direction: entry.direction,
+        };
+        setActivityLog((prev) => [...prev, row]);
+    }, []);
 
     const filteredPatients = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -234,8 +260,22 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
                 ...prev,
                 [patientId]: [...(prev[patientId] ?? []), built].sort((a, b) => a.sentAt - b.sentAt),
             }));
+            const p = patientsRef.current.find((x) => x.id === patientId);
+            const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
+            const chLabel = entry.channel === "sms" ? "SMS" : "Courriel";
+            const isOut = entry.direction === "outbound";
+            appendActivityLog({
+                at: built.sentAt,
+                kind: isOut ? "message_outbound" : "message_inbound",
+                patientId,
+                patientLabel,
+                summary: isOut ? `Message envoyé (${chLabel})` : `Message reçu (${chLabel})`,
+                detail: entry.body.length > 220 ? `${entry.body.slice(0, 220)}…` : entry.body,
+                channel: entry.channel,
+                direction: entry.direction,
+            });
         },
-        [],
+        [appendActivityLog],
     );
 
     const sendStaffMessage = useCallback(
@@ -282,14 +322,35 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
 
     const acceptConsent = useCallback(
         (patientId: string) => {
+            const p = patientsRef.current.find((x) => x.id === patientId);
+            const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
+            appendActivityLog({
+                kind: "consent_accepted",
+                patientId,
+                patientLabel,
+                summary: "Consentement accepté",
+                detail: "Le patient passe en attente à distance.",
+            });
             setPatients((prev) => movePatientToStatus(prev, patientId, "waiting"));
         },
-        [notifyForStatusChange],
+        [appendActivityLog],
     );
 
-    const confirmReturn = useCallback((patientId: string) => {
-        setPatients((prev) => movePatientToStatus(prev, patientId, "arrived"));
-    }, []);
+    const confirmReturn = useCallback(
+        (patientId: string) => {
+            const p = patientsRef.current.find((x) => x.id === patientId);
+            const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
+            appendActivityLog({
+                kind: "return_confirmed",
+                patientId,
+                patientLabel,
+                summary: "Retour confirmé",
+                detail: "Le patient a confirmé son retour depuis le message.",
+            });
+            setPatients((prev) => movePatientToStatus(prev, patientId, "arrived"));
+        },
+        [appendActivityLog],
+    );
 
     const finalizeDistanceServiceExit = useCallback(
         (
@@ -300,6 +361,32 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
                 "consent_refused" | "consent_withdrawn" | "patient_cancelled_queue"
             >,
         ) => {
+            const patientLabel = `${fullName(p)} — ${p.fileNumber}`;
+            if (completionCause === "consent_refused") {
+                appendActivityLog({
+                    kind: "consent_refused",
+                    patientId,
+                    patientLabel,
+                    summary: "Consentement refusé",
+                    detail: "Dossier clôturé — service à distance retiré.",
+                });
+            } else if (completionCause === "consent_withdrawn") {
+                appendActivityLog({
+                    kind: "consent_withdrawn",
+                    patientId,
+                    patientLabel,
+                    summary: "Retrait du consentement",
+                    detail: "Dossier clôturé — service à distance retiré.",
+                });
+            } else {
+                appendActivityLog({
+                    kind: "patient_left_queue_via_link",
+                    patientId,
+                    patientLabel,
+                    summary: "Annulation par le patient (lien public)",
+                    detail: "Annulation depuis la page de confirmation.",
+                });
+            }
             setPatients((prev) =>
                 movePatientToStatus(prev, patientId, "completed", { cancelled: true, completionCause }),
             );
@@ -308,7 +395,7 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             if (p.phone?.trim()) sendStaffMessage(patientId, "sms", revokeMsg);
             if (p.email?.trim()) sendStaffMessage(patientId, "email", revokeMsg);
         },
-        [setPatients, sendStaffMessage],
+        [appendActivityLog, setPatients, sendStaffMessage],
     );
 
     const cancelQueueRequestFromPatient = useCallback(
@@ -359,6 +446,16 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
                 const column = colMatch[1] as BoardColumnId;
                 const dragged = patients.find((p) => p.id === draggedId);
                 const next = statusWhenDroppedOnColumn(column, dragged?.status);
+                if (dragged && dragged.status !== next) {
+                    const patientLabel = `${fullName(dragged)} — ${dragged.fileNumber}`;
+                    appendActivityLog({
+                        kind: "status_drag",
+                        patientId: draggedId,
+                        patientLabel,
+                        summary: "Déplacement (glisser-déposer)",
+                        detail: `${patientStatusLabelFr(dragged.status)} → ${patientStatusLabelFr(next)}`,
+                    });
+                }
                 setPatients((prev) => movePatientToStatus(prev, draggedId, next));
                 notifyForStatusChange(draggedId, next);
                 setSelectedPatientId((cur) => cur ?? draggedId);
@@ -368,12 +465,24 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             // If dropped over another patient, move to that patient's column (coarse).
             const overPatient = patients.find((p) => p.id === overId);
             if (!overPatient) return;
+            const draggedB = patients.find((p) => p.id === draggedId);
+            const prevStatusB = draggedB?.status;
             const next = statusWhenDroppedOnColumn(statusToColumn(overPatient.status), patients.find((p) => p.id === draggedId)?.status);
+            if (draggedB && prevStatusB !== undefined && prevStatusB !== next) {
+                const patientLabel = `${fullName(draggedB)} — ${draggedB.fileNumber}`;
+                appendActivityLog({
+                    kind: "status_drag",
+                    patientId: draggedId,
+                    patientLabel,
+                    summary: "Déplacement (glisser-déposer)",
+                    detail: `${patientStatusLabelFr(prevStatusB)} → ${patientStatusLabelFr(next)}`,
+                });
+            }
             setPatients((prev) => movePatientToStatus(prev, draggedId, next));
             notifyForStatusChange(draggedId, next);
             setSelectedPatientId((cur) => cur ?? draggedId);
         },
-        [patients, notifyForStatusChange],
+        [appendActivityLog, patients, notifyForStatusChange],
     );
 
     const [addPatientOpen, setAddPatientOpen] = useState(false);
@@ -452,10 +561,17 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
 
         setPatients((prev) => [...created, ...prev]);
         if (!selectedPatientId && created.length > 0) setSelectedPatientId(created[0]!.id);
+        appendActivityLog({
+            kind: "demo_patients_added",
+            patientId: null,
+            patientLabel: "—",
+            summary: `${safeCount} patient${safeCount > 1 ? "s" : ""} de démonstration ajouté${safeCount > 1 ? "s" : ""}`,
+            detail: "Ajout groupé depuis les paramètres de la liste.",
+        });
         for (const p of created) {
             sendConsentInvites(appendNotification, p);
         }
-    }, [selectedPatientId, appendNotification]);
+    }, [appendActivityLog, selectedPatientId, appendNotification]);
 
     const addPatient = useCallback(() => {
         const reason = form.reason.trim();
@@ -483,6 +599,14 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         setPatients((prev) => [patient, ...prev]);
         setSelectedPatientId(id);
 
+        appendActivityLog({
+            kind: "patient_added",
+            patientId: id,
+            patientLabel: `${fullName(patient)} — ${patient.fileNumber}`,
+            summary: "Patient ajouté à la liste",
+            detail: patient.reason,
+        });
+
         // Seed initial notifications for the demo.
         if (status === "consentPending") {
             sendConsentInvites(appendNotification, patient);
@@ -499,13 +623,16 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             notes: "",
             consentManagedManually: false,
         });
-    }, [form, appendNotification]);
+    }, [appendActivityLog, form, appendNotification]);
 
     const savePatientEdits = useCallback(() => {
         if (!editingPatientId) return;
         const reason = form.reason.trim();
         if (!reason) return;
         if (!form.phone.trim() && !form.email.trim()) return;
+
+        const edited = patientsRef.current.find((x) => x.id === editingPatientId);
+        const prevLabel = edited ? `${fullName(edited)} — ${edited.fileNumber}` : editingPatientId;
 
         setPatients((prev) =>
             prev.map((p) =>
@@ -525,6 +652,14 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
                       },
             ),
         );
+        const nextName = `${form.firstName.trim() || edited?.firstName || ""} ${form.lastName.trim() || edited?.lastName || ""}`.trim();
+        appendActivityLog({
+            kind: "patient_edited",
+            patientId: editingPatientId,
+            patientLabel: `${nextName} — ${form.fileNumber.trim() || "—"}`,
+            summary: "Fiche patient modifiée",
+            detail: prevLabel !== `${nextName} — ${form.fileNumber.trim() || "—"}` ? `Ancien libellé : ${prevLabel}` : undefined,
+        });
         setEditingPatientId(null);
         setForm({
             firstName: "",
@@ -537,17 +672,30 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             notes: "",
             consentManagedManually: false,
         });
-    }, [editingPatientId, form]);
+    }, [appendActivityLog, editingPatientId, form]);
 
-    const staffCancelPatient = useCallback((patientId: string, reason: string) => {
-        setPatients((prev) =>
-            movePatientToStatus(prev, patientId, "completed", {
-                cancelled: true,
-                completionCause: "staff_cancelled",
-                cancellationReason: reason,
-            }),
-        );
-    }, []);
+    const staffCancelPatient = useCallback(
+        (patientId: string, reason: string) => {
+            const p = patientsRef.current.find((x) => x.id === patientId);
+            const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
+            const trimmed = reason.trim();
+            appendActivityLog({
+                kind: "staff_cancelled",
+                patientId,
+                patientLabel,
+                summary: "Dossier annulé par l’équipe",
+                detail: trimmed || "Non spécifié",
+            });
+            setPatients((prev) =>
+                movePatientToStatus(prev, patientId, "completed", {
+                    cancelled: true,
+                    completionCause: "staff_cancelled",
+                    cancellationReason: reason,
+                }),
+            );
+        },
+        [appendActivityLog],
+    );
 
     const value: VersionCContextValue = {
         query,
@@ -594,6 +742,9 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         setCancelModalPatientId,
         singleMessagePatientId,
         setSingleMessagePatientId,
+
+        activityLog,
+        appendActivityLog,
     };
 
     return <VersionCContext.Provider value={value}>{children}</VersionCContext.Provider>;

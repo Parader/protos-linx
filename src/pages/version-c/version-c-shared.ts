@@ -58,6 +58,53 @@ export type Patient = {
 
 export type BoardColumnId = "waiting" | "recall" | "completed";
 
+/** Entrées du journal d’activité (rapports) — messages et événements file. */
+export type ActivityLogKind =
+    | "message_outbound"
+    | "message_inbound"
+    | "patient_added"
+    | "demo_patients_added"
+    | "patient_edited"
+    | "status_menu"
+    | "status_drag"
+    | "consent_accepted"
+    | "consent_refused"
+    | "consent_withdrawn"
+    | "return_confirmed"
+    | "patient_left_queue_via_link"
+    | "staff_cancelled"
+    | "board_cleared";
+
+export type ActivityLogEntry = {
+    id: string;
+    at: number;
+    kind: ActivityLogKind;
+    /** `null` pour les entrées globales (ex. effacement de la liste). */
+    patientId: string | null;
+    patientLabel: string;
+    summary: string;
+    detail?: string;
+    channel?: NotificationChannel;
+    direction?: NotificationDirection;
+};
+
+export function patientStatusLabelFr(s: PatientStatus): string {
+    switch (s) {
+        case "waiting":
+            return "En attente";
+        case "consentPending":
+            return "Consentement en attente";
+        case "recall":
+            return "Rappel";
+        case "arrived":
+            return "Retour confirmé";
+        case "completed":
+            return "Terminé";
+        default:
+            return s;
+    }
+}
+
 export const BOARD_COLUMN_META: { id: BoardColumnId; title: string }[] = [
     { id: "waiting", title: "Attente" },
     { id: "recall", title: "Rappel" },

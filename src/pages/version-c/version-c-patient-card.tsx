@@ -49,7 +49,7 @@ function statusLabel(patient: Patient) {
         if (cause === "consent_withdrawn") {
             return {
                 label: "Retrait du consentement",
-                className: "border-[#C7D7FE] bg-[#F0F5FF] text-[#1D3B8C]",
+                className: "border-[#FFE4E8] bg-[#FFF1F3] text-[#C01048]",
             };
         }
         if (cause === "consent_refused") {
