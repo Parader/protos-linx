@@ -29,7 +29,7 @@ interface ThemeProviderProps {
     darkModeClass?: string;
     /**
      * The default theme to use if no theme is stored in localStorage
-     * @default "system"
+     * @default "light" — évite le mode sombre implicite de l’OS (contrôles natifs noirs, etc.)
      */
     defaultTheme?: Theme;
     /**
@@ -39,11 +39,14 @@ interface ThemeProviderProps {
     storageKey?: string;
 }
 
-export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
+export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
     const [theme, setTheme] = useState<Theme>(() => {
         if (typeof window !== "undefined") {
             const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-            return savedTheme || defaultTheme;
+            if (savedTheme === "dark") return "dark";
+            if (savedTheme === "light") return "light";
+            if (savedTheme === "system") return defaultTheme;
+            return defaultTheme;
         }
         return defaultTheme;
     });

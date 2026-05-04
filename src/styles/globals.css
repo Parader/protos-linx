@@ -28,6 +28,11 @@
     transition-timing-function: inherit;
 }
 
+html {
+    /* Évite les champs / boutons natifs noirs quand l’OS ou le navigateur est en mode sombre */
+    color-scheme: light;
+}
+
 html,
 body {
     font-family: var(--font-body);

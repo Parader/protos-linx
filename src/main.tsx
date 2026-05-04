@@ -25,7 +25,7 @@ import "@/styles/globals.css";
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="light">
             <BrowserRouter>
                 <RouteProvider>
                     <Routes>
