@@ -1,0 +1,298 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { Button } from "@/components/base/buttons/button";
+import { Select } from "@/components/base/select/select";
+import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
+import { ExitDistanceServiceConfirmModal } from "@/pages/version-d/version-d-exit-distance-confirm-modal";
+import { useVersionD } from "@/pages/version-d/version-d-context";
+import { fullName } from "@/pages/version-d/version-d-shared";
+
+/** Consentement — attente à distance pour la file d’attente à l’urgence (prototype). */
+const CONSENT_BODY = (
+    <>
+        <p className="text-[15px] leading-relaxed text-[#172B4D]">
+            Vous êtes inscrit au service d’<strong>attente à distance</strong> pour la <strong>file d’attente de l’urgence</strong>. Il ne s’agit pas d’une consultation médicale à distance : ce service sert à gérer votre attente et les communications avec l’équipe (p. ex. rappels, coordonnées) jusqu’à votre prise en charge à l’urgence.
+        </p>
+        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+            Préalablement à toute poursuite, il vous appartient de <strong>prendre connaissance du consentement éclairé et d’y donner votre accord</strong>, lequel porte notamment sur la collecte, l’utilisation et la communication de vos renseignements personnels et de santé dans le cadre du présent service.
+        </p>
+        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+            En appuyant sur le bouton « J’accepte », vous attestez avoir pris connaissance des modalités qui vous sont présentées et{" "}
+            <strong>consentez à utiliser ce service d’attente à distance pour la file d’attente à l’urgence</strong>.
+        </p>
+        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+            Vous pouvez <strong>refuser</strong> le consentement avant de l’accepter. Après acceptation, vous pouvez à tout moment{" "}
+            <strong>retirer votre consentement</strong> en accédant de nouveau à <strong>cette même page</strong> au moyen du lien qui vous a été
+            communiqué.
+        </p>
+    </>
+);
+
+function formatExpiryDate(ts: number) {
+    try {
+        return new Intl.DateTimeFormat("fr-CA", { dateStyle: "long", timeStyle: "short" }).format(new Date(ts + 7 * 24 * 60 * 60 * 1000));
+    } catch {
+        return "dans les 7 jours";
+    }
+}
+
+type ExitModalState = { variant: "refuse" | "withdraw" | "cancel_manual_waiting"; patientId: string } | null;
+
+export function VersionDPatientConsentPage() {
+    const { patients, acceptConsent, refuseConsent, withdrawConsent, cancelManualWaitingEnrollmentFromPatient } = useVersionD();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const [exitModal, setExitModal] = useState<ExitModalState>(null);
+
+    const consentPatients = useMemo(
+        () => patients.filter((p) => p.status === "consentPending").sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)),
+        [patients],
+    );
+
+    const patientIdFromQuery = searchParams.get("patientId");
+    /** Dossier en file (lien avec patientId) : retrait de consentement ou annulation selon le mode d’enregistrement du consentement. */
+    const waitingQueuePatientFromLink = useMemo(() => {
+        if (!patientIdFromQuery) return null;
+        const p = patients.find((x) => x.id === patientIdFromQuery);
+        if (!p || p.status !== "waiting") return null;
+        return p;
+    }, [patients, patientIdFromQuery]);
+
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fromQuery = searchParams.get("patientId");
+        if (fromQuery && consentPatients.some((p) => p.id === fromQuery)) {
+            setSelectedId(fromQuery);
+            return;
+        }
+
+        if (consentPatients.length === 0) {
+            setSelectedId(null);
+            return;
+        }
+        setSelectedId((prev) => {
+            if (prev && consentPatients.some((p) => p.id === prev)) return prev;
+            return consentPatients[0]?.id ?? null;
+        });
+    }, [consentPatients, searchParams]);
+
+    const selected = useMemo(
+        () => (selectedId ? consentPatients.find((p) => p.id === selectedId) ?? null : null),
+        [consentPatients, selectedId],
+    );
+
+    const showWaitingQueueOnly = consentPatients.length === 0 && waitingQueuePatientFromLink !== null;
+
+    return (
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">
+            <div className="mx-auto flex w-full max-w-[680px] flex-col px-4 py-8 pb-16">
+                <header className="mb-6 text-center">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#5E6C84]">Prototype — perspective usager</p>
+                    <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#172B4D]">Consentement éclairé</h1>
+                </header>
+
+                {consentPatients.length === 0 && !showWaitingQueueOnly ? (
+                    <div className="rounded-2xl border border-[#E4E6EA] bg-white p-10 text-center shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
+                        <p className="text-[15px] leading-relaxed text-[#475467]">
+                            Aucun dossier n’est présentement <strong>en attente de consentement</strong> pour cette session. Si vous avez reçu un lien
+                            personnel, ouvrez-le pour accéder à votre formulaire.
+                        </p>
+                    </div>
+                ) : showWaitingQueueOnly && waitingQueuePatientFromLink ? (
+                    <article className="overflow-hidden rounded-2xl border border-[#E4E6EA] bg-white shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
+                        <div className="border-b border-[#EEF0F4] bg-white px-6 py-5">
+                            <div className="flex flex-wrap items-end justify-between gap-4">
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:gap-6">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <img
+                                            src={BRAND_QUEBEC_LOGO}
+                                            alt="Gouvernement du Québec"
+                                            className="h-8 w-auto max-w-[min(100%,220px)] shrink-0 object-contain object-left sm:h-9"
+                                        />
+                                    </div>
+                                    <div className="h-px w-full bg-[#E4E6EA] sm:hidden" aria-hidden />
+                                    <div className="min-w-0 sm:pb-0.5">
+                                        <p className="text-lg font-semibold leading-snug text-[#082244]">Attente à distance — File d’attente à l’urgence</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="px-6 py-6 sm:px-8 sm:py-8">
+                            <p className="text-[15px] leading-relaxed text-[#172B4D]">
+                                Bonjour, <strong>{fullName(waitingQueuePatientFromLink)}</strong>,
+                            </p>
+                            {waitingQueuePatientFromLink.consentManagedManually ? (
+                                <>
+                                    <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+                                        Votre inscription au service d’<strong>attente à distance</strong> est confirmée. Le consentement a été enregistré
+                                        par l’équipe pour votre dossier. Vous pouvez à tout moment <strong>annuler votre inscription</strong> (rendez-vous)
+                                        depuis cette page.
+                                    </p>
+                                    <p className="mt-4 text-sm text-[#5E6C84]">
+                                        L’annulation met fin au suivi à distance : pour toute urgence ou soins, présentez-vous en personne à l’urgence.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+                                        Votre consentement au service d’attente à distance a déjà été enregistré. Vous pouvez à tout moment{" "}
+                                        <strong>retirer votre consentement</strong> depuis cette page.
+                                    </p>
+                                    <p className="mt-4 text-sm text-[#5E6C84]">
+                                        Le retrait met fin au service de rappel et de suivi à distance : pour toute suite, présentez-vous en personne à
+                                        l’urgence.
+                                    </p>
+                                </>
+                            )}
+                            <div className="mt-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <Button
+                                    color="secondary-destructive"
+                                    size="lg"
+                                    className="w-full sm:w-auto"
+                                    onClick={() =>
+                                        setExitModal({
+                                            variant: waitingQueuePatientFromLink.consentManagedManually
+                                                ? "cancel_manual_waiting"
+                                                : "withdraw",
+                                            patientId: waitingQueuePatientFromLink.id,
+                                        })
+                                    }
+                                >
+                                    {waitingQueuePatientFromLink.consentManagedManually
+                                        ? "Annuler le rendez-vous"
+                                        : "Retirer le consentement"}
+                                </Button>
+                            </div>
+                        </div>
+                        <footer className="border-t border-[#EEF0F4] bg-[#FAFBFC] px-6 py-4 text-center">
+                            <Link to="/version-d" className="inline-flex justify-center">
+                                <img
+                                    src={BRAND_POWERED_BY_AKINOX}
+                                    alt="Propulsé par Akinox"
+                                    className="h-[34px] w-auto max-w-full object-contain"
+                                />
+                            </Link>
+                        </footer>
+                    </article>
+                ) : (
+                    <article className="overflow-hidden rounded-2xl border border-[#E4E6EA] bg-white shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
+                        <div className="border-b border-[#EEF0F4] bg-white px-6 py-5">
+                            <div className="flex flex-wrap items-end justify-between gap-4">
+                                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:gap-6">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <img
+                                            src={BRAND_QUEBEC_LOGO}
+                                            alt="Gouvernement du Québec"
+                                            className="h-8 w-auto max-w-[min(100%,220px)] shrink-0 object-contain object-left sm:h-9"
+                                        />
+                                    </div>
+                                    <div className="h-px w-full bg-[#E4E6EA] sm:hidden" aria-hidden />
+                                    <div className="min-w-0 sm:pb-0.5">
+                                        <p className="text-lg font-semibold leading-snug text-[#082244]">Attente à distance — File d’attente à l’urgence</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-6 sm:px-8 sm:py-8">
+                            {consentPatients.length > 1 && (
+                                <div className="mb-6 max-w-md">
+                                    <Select
+                                        label="Sélection du dossier (simulation)"
+                                        selectedKey={selectedId ?? undefined}
+                                        onSelectionChange={(key) => setSelectedId(String(key))}
+                                    >
+                                        {consentPatients.map((p) => (
+                                            <Select.Item key={p.id} id={p.id}>
+                                                {fullName(p)} — {p.fileNumber}
+                                            </Select.Item>
+                                        ))}
+                                    </Select>
+                                </div>
+                            )}
+
+                            {selected ? (
+                                <>
+                                    <div className="space-y-4 border-b border-[#EEF0F4] pb-6">
+                                        <p className="text-[15px] leading-relaxed text-[#172B4D]">
+                                            Bonjour, <strong>{fullName(selected)}</strong>,
+                                        </p>
+                                        {CONSENT_BODY}
+                                    </div>
+
+                                    <div className="mt-8 border-t border-[#EEF0F4] pt-6">
+                                        <p className="text-sm italic leading-relaxed text-[#082244]">
+                                            Pour prendre connaissance de l’avis complet relatif à la confidentialité ainsi qu’aux droits qui vous sont reconnus, veuillez{" "}
+                                            <a href="#" className="font-medium text-[#0573d8] underline underline-offset-2">
+                                                consulter le document afférent
+                                            </a>
+                                            .
+                                        </p>
+                                        <p className="mt-4 text-sm text-[#5E6C84]">
+                                            La validité du présent lien prend fin le <span className="font-medium text-[#172B4D]">{formatExpiryDate(selected.createdAt)}</span>{" "}
+                                            (délai indicatif aux fins de démonstration seulement).
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-8 flex flex-col gap-4">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                                            <Button
+                                                size="lg"
+                                                className="w-full bg-[#0573d8] text-white hover:bg-[#0460b8] sm:w-auto sm:min-w-[200px]"
+                                                onClick={() => {
+                                                    const patientId = selected.id;
+                                                    acceptConsent(patientId);
+                                                    navigate("/version-d/patient-consent/next", { state: { patientId } });
+                                                }}
+                                            >
+                                                J’accepte
+                                            </Button>
+                                            <Button
+                                                color="secondary-destructive"
+                                                size="lg"
+                                                className="w-full sm:w-auto sm:min-w-[200px]"
+                                                onClick={() => setExitModal({ variant: "refuse", patientId: selected.id })}
+                                            >
+                                                Annuler le rendez-vous
+                                            </Button>
+                                        </div>
+                                        <p className="text-center text-xs text-[#5E6C84] sm:text-left">
+                                            Une fois l’acceptation enregistrée, le dossier est classé en <strong>file d’attente</strong> côté établissement.
+                                        </p>
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+
+                        <footer className="border-t border-[#EEF0F4] bg-[#FAFBFC] px-6 py-4 text-center">
+                            <Link to="/version-d" className="inline-flex justify-center">
+                                <img
+                                    src={BRAND_POWERED_BY_AKINOX}
+                                    alt="Propulsé par Akinox"
+                                    className="h-[34px] w-auto max-w-full object-contain"
+                                />
+                            </Link>
+                        </footer>
+                    </article>
+                )}
+            </div>
+
+            <ExitDistanceServiceConfirmModal
+                isOpen={exitModal !== null}
+                onOpenChange={(open) => {
+                    if (!open) setExitModal(null);
+                }}
+                variant={exitModal?.variant ?? "refuse"}
+                onConfirm={() => {
+                    if (!exitModal) return;
+                    if (exitModal.variant === "refuse") refuseConsent(exitModal.patientId);
+                    else if (exitModal.variant === "withdraw") withdrawConsent(exitModal.patientId);
+                    else cancelManualWaitingEnrollmentFromPatient(exitModal.patientId);
+                    setExitModal(null);
+                    navigate("/version-d", { replace: true });
+                }}
+            />
+        </main>
+    );
+}

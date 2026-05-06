@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { XClose } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
@@ -6,8 +6,9 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { formatNanpFromRaw } from "@/utils/na-phone-format";
-import { VERSION_C_USE_CLASSIC_ADD_PATIENT_MODAL } from "@/pages/version-c/version-c-add-patient-modal-config";
-import { useVersionC } from "@/pages/version-c/version-c-context";
+import { VERSION_D_USE_CLASSIC_ADD_PATIENT_MODAL } from "@/pages/version-d/version-d-add-patient-modal-config";
+import { useVersionD } from "@/pages/version-d/version-d-context";
+import { patientHasConsentEffectivelyRecorded } from "@/pages/version-d/version-d-shared";
 
 function Divider() {
     return <div className="h-px w-full bg-[#E2E5EB]" aria-hidden />;
@@ -58,7 +59,7 @@ const PRIORITIES: PriorityOption[] = [
 ];
 
 /** Formulaire long d’origine — ajout (si activé) et édition d’un patient existant. */
-export function VersionCAddPatientModalClassic() {
+export function VersionDAddPatientModalClassic() {
     const {
         addPatientOpen,
         setAddPatientOpen,
@@ -69,13 +70,25 @@ export function VersionCAddPatientModalClassic() {
         setForm,
         addPatient,
         savePatientEdits,
-    } = useVersionC();
+    } = useVersionD();
     const [reasonTouched, setReasonTouched] = useState(false);
     const [contactTouched, setContactTouched] = useState(false);
     const loadedEditIdRef = useRef<string | null>(null);
 
     const isEditMode = Boolean(editingPatientId);
-    const isOpen = VERSION_C_USE_CLASSIC_ADD_PATIENT_MODAL ? addPatientOpen || isEditMode : isEditMode;
+    const isOpen = VERSION_D_USE_CLASSIC_ADD_PATIENT_MODAL ? addPatientOpen || isEditMode : isEditMode;
+
+    const editingPatient = useMemo(
+        () => (editingPatientId ? (patients.find((x) => x.id === editingPatientId) ?? null) : null),
+        [editingPatientId, patients],
+    );
+    /** Hors « consentement en attente », le consentement ne peut plus être modifié depuis cette fiche. */
+    const isConsentManualLocked = isEditMode && editingPatient != null && editingPatient.status !== "consentPending";
+
+    /** En édition verrouillée, la case reflète « consentement enregistré » (manuel ou via la plateforme), pas seulement le booléen manuel. */
+    const consentCheckboxChecked = isConsentManualLocked && editingPatient
+        ? patientHasConsentEffectivelyRecorded(editingPatient)
+        : form.consentManagedManually;
 
     const reasonMissing = !form.reason.trim();
     const showReasonError = reasonTouched && reasonMissing;
@@ -306,7 +319,7 @@ export function VersionCAddPatientModalClassic() {
                                                     </div>
                                                     <input
                                                         type="radio"
-                                                        name="version-c-priority-classic"
+                                                        name="version-d-priority-classic"
                                                         className={cx(
                                                             "mt-1 size-4 shrink-0 appearance-none rounded-full border bg-white",
                                                             "border-[#D0D5DD] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.03)]",
@@ -333,23 +346,47 @@ export function VersionCAddPatientModalClassic() {
 
                                 <Divider />
 
-                                <label className="flex cursor-pointer items-start gap-3 rounded-lg bg-transparent p-1">
+                                <label
+                                    className={cx(
+                                        "flex items-start gap-3 rounded-lg bg-transparent p-1",
+                                        isConsentManualLocked ? "cursor-default opacity-90" : "cursor-pointer",
+                                    )}
+                                >
                                     <input
                                         type="checkbox"
-                                        checked={form.consentManagedManually}
+                                        checked={consentCheckboxChecked}
+                                        disabled={isConsentManualLocked}
                                         onChange={(e) => setForm((f) => ({ ...f, consentManagedManually: e.target.checked }))}
-                                        className="mt-1 size-4"
+                                        className="mt-1 size-4 disabled:cursor-not-allowed"
                                     />
                                     <div className="min-w-0">
-                                        <div className="text-sm font-medium text-[#344054]">Le consentement a été géré manuellement.</div>
+                                        <div className="text-sm font-medium text-[#344054]">
+                                            {isConsentManualLocked && editingPatient
+                                                ? patientHasConsentEffectivelyRecorded(editingPatient)
+                                                    ? editingPatient.consentManagedManually
+                                                        ? "Le consentement a été géré manuellement."
+                                                        : "Le consentement a été enregistré via la plateforme."
+                                                    : "Consentement non enregistré pour ce dossier."
+                                                : "Le consentement a été géré manuellement."}
+                                        </div>
                                         <div className="mt-1 text-sm text-[#667085]">
-                                            Cocher cette case permet au patient de contourner l’étape de consentement. La laisser décochée
-                                            déclenchera une notification demandant le consentement via la plateforme.
+                                            {isConsentManualLocked ? (
+                                                <>
+                                                    Le consentement est déjà pris en compte pour ce dossier ; il ne peut pas être modifié ou retiré
+                                                    depuis cette fiche.
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Cocher cette case permet au patient de contourner l’étape de consentement et passe la fiche en
+                                                    attente lors de l’enregistrement. La laisser décochée déclenchera une notification demandant le
+                                                    consentement via la plateforme.
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </label>
 
-                                <div className="flex items-center gap-3 pt-2">
+                                <div className="flex flex-wrap items-center gap-3 pt-2">
                                     <Button
                                         size="md"
                                         className="bg-[#0573D8] text-white hover:bg-[#0460B8]"

@@ -2,7 +2,7 @@ import { Heading } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 
-export type ExitDistanceVariant = "refuse" | "withdraw";
+export type ExitDistanceVariant = "refuse" | "withdraw" | "cancel_manual_waiting";
 
 type Props = {
     isOpen: boolean;
@@ -12,8 +12,18 @@ type Props = {
 };
 
 export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant, onConfirm }: Props) {
-    const title = variant === "refuse" ? "Refuser le consentement" : "Retirer le consentement";
-    const confirmLabel = variant === "refuse" ? "Confirmer le refus" : "Confirmer le retrait";
+    const title =
+        variant === "refuse"
+            ? "Refuser le consentement"
+            : variant === "withdraw"
+              ? "Retirer le consentement"
+              : "Annuler le rendez-vous";
+    const confirmLabel =
+        variant === "refuse"
+            ? "Confirmer le refus"
+            : variant === "withdraw"
+              ? "Confirmer le retrait"
+              : "Confirmer l’annulation";
 
     return (
         <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -33,21 +43,29 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                             En refusant, vous n’êtes <strong>pas inscrit</strong> au service de rappel et de suivi à distance et vous
                                             ne recevrez pas de messages liés à la file d’attente virtuelle.
                                         </>
-                                    ) : (
+                                    ) : variant === "withdraw" ? (
                                         <>
                                             Retirer votre consentement vous retire <strong>complètement</strong> du service de rappel et de suivi à
                                             distance. Vous ne recevrez plus de messages liés à votre place dans la file d’attente virtuelle.
                                         </>
+                                    ) : (
+                                        <>
+                                            En annulant, vous êtes <strong>retiré de la file d’attente à distance</strong> : vous ne recevrez plus de
+                                            messages de suivi liés à cette inscription. Pour toute évaluation ou soins, vous devrez vous présenter en
+                                            personne à l’urgence.
+                                        </>
                                     )}
                                 </p>
-                                <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">
-                                    Pour toute évaluation ou suite à donner à votre situation, vous devrez{" "}
-                                    <strong>vous présenter en personne à l’urgence</strong>.
-                                </p>
+                                {variant !== "cancel_manual_waiting" ? (
+                                    <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">
+                                        Pour toute évaluation ou suite à donner à votre situation, vous devrez{" "}
+                                        <strong>vous présenter en personne à l’urgence</strong>.
+                                    </p>
+                                ) : null}
                             </div>
                             <div className="flex flex-col gap-2 border-t border-[#EEF0F4] px-6 py-4 sm:flex-row sm:justify-start">
                                 <Button
-                                    color="primary-destructive"
+                                    color="primary"
                                     size="md"
                                     className="w-full sm:w-auto"
                                     onClick={() => {

@@ -6,8 +6,8 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { formatNanpFromRaw } from "@/utils/na-phone-format";
-import { useVersionC } from "@/pages/version-c/version-c-context";
-import type { VersionCNewPatientForm } from "@/pages/version-c/version-c-context";
+import { useVersionD } from "@/pages/version-d/version-d-context";
+import type { VersionDNewPatientForm } from "@/pages/version-d/version-d-context";
 
 /** Étapes questions seulement : 0 = identité … 6 = consentement ; dernière étape = ajout à la file d’attente. */
 const QUESTION_STEP_COUNT = 7;
@@ -58,7 +58,7 @@ const PRIORITIES: PriorityOption[] = [
     },
 ];
 
-function contactSummary(f: VersionCNewPatientForm) {
+function contactSummary(f: VersionDNewPatientForm) {
     const p = f.phone.trim();
     const e = f.email.trim();
     if (p && e) return `${p} · ${e}`;
@@ -67,7 +67,7 @@ function contactSummary(f: VersionCNewPatientForm) {
     return "—";
 }
 
-function FrozenBlock({ form, currentStep }: { form: VersionCNewPatientForm; currentStep: number }) {
+function FrozenBlock({ form, currentStep }: { form: VersionDNewPatientForm; currentStep: number }) {
     const rows: { label: string; value: string }[] = [];
     if (currentStep > 0) {
         const id = [form.firstName, form.lastName].map((s) => s.trim()).filter(Boolean).join(" ");
@@ -97,8 +97,8 @@ function FrozenBlock({ form, currentStep }: { form: VersionCNewPatientForm; curr
     );
 }
 
-export function VersionCAddPatientModalWizard() {
-    const { addPatientOpen, setAddPatientOpen, form, setForm, addPatient } = useVersionC();
+export function VersionDAddPatientModalWizard() {
+    const { addPatientOpen, setAddPatientOpen, form, setForm, addPatient } = useVersionD();
     const [step, setStep] = useState(0);
     const [reasonTouched, setReasonTouched] = useState(false);
     const [contactTouched, setContactTouched] = useState(false);
@@ -421,7 +421,7 @@ export function VersionCAddPatientModalWizard() {
                                             <>
                                                 <p className="text-sm font-medium text-[#0573D8]">Question 5 sur {QUESTION_STEP_COUNT}</p>
                                                 <h3
-                                                    id="version-c-priority-heading"
+                                                    id="version-d-priority-heading"
                                                     className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl"
                                                 >
                                                     Quelle priorité clinique ?
@@ -432,7 +432,7 @@ export function VersionCAddPatientModalWizard() {
                                                 <div
                                                     ref={priorityGroupRef}
                                                     role="radiogroup"
-                                                    aria-labelledby="version-c-priority-heading"
+                                                    aria-labelledby="version-d-priority-heading"
                                                     aria-orientation="horizontal"
                                                     tabIndex={0}
                                                     onKeyDownCapture={handlePriorityKeyDown}
@@ -466,7 +466,7 @@ export function VersionCAddPatientModalWizard() {
                                                                 <span className="mt-2 text-xs leading-snug text-[#667085]">{opt.fr}</span>
                                                                 <input
                                                                     type="radio"
-                                                                    name="version-c-priority-wizard"
+                                                                    name="version-d-priority-wizard"
                                                                     className="sr-only"
                                                                     tabIndex={-1}
                                                                     checked={selected}

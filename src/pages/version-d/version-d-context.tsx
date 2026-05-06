@@ -14,6 +14,7 @@ import {
     defaultStatusForNewPatient,
     fullName,
     movePatientToStatus,
+    patientRequiresConsentAttestationForRecallMove,
     patientStatusLabelFr,
     statusToColumn,
     statusWhenDroppedOnColumn,
@@ -27,9 +28,10 @@ import {
     type CommunicationLanguage,
     type PatientPriority,
     type PatientStatus,
-} from "@/pages/version-c/version-c-shared";
+} from "@/pages/version-d/version-d-shared";
+import { VersionDMoveToRecallModal } from "@/pages/version-d/version-d-move-to-recall-modal";
 
-export type VersionCNewPatientForm = {
+export type VersionDNewPatientForm = {
     firstName: string;
     lastName: string;
     fileNumber: string;
@@ -42,7 +44,7 @@ export type VersionCNewPatientForm = {
     consentManagedManually: boolean;
 };
 
-export type VersionCContextValue = {
+export type VersionDContextValue = {
     query: string;
     setQuery: (q: string) => void;
     patients: Patient[];
@@ -61,8 +63,8 @@ export type VersionCContextValue = {
     // Add patient modal
     addPatientOpen: boolean;
     setAddPatientOpen: (open: boolean) => void;
-    form: VersionCNewPatientForm;
-    setForm: React.Dispatch<React.SetStateAction<VersionCNewPatientForm>>;
+    form: VersionDNewPatientForm;
+    setForm: React.Dispatch<React.SetStateAction<VersionDNewPatientForm>>;
     addPatient: () => void;
     addDemoPatients: (count: number) => void;
 
@@ -79,6 +81,10 @@ export type VersionCContextValue = {
     withdrawConsent: (patientId: string) => void;
     /** Refus avant acceptation (consentement en attente). */
     refuseConsent: (patientId: string) => void;
+    /**
+     * Patient en file avec consentement géré manuellement : annulation depuis le lien reçu (même effet qu’une annulation depuis la page de rappel).
+     */
+    cancelManualWaitingEnrollmentFromPatient: (patientId: string) => void;
     confirmReturn: (patientId: string) => void;
     /** Depuis la page « confirmer le retour » : annule la requête (rappel ou retour déjà confirmé). */
     cancelQueueRequestFromPatient: (patientId: string) => void;
@@ -88,18 +94,21 @@ export type VersionCContextValue = {
     setEditingPatientId: (id: string | null) => void;
     savePatientEdits: () => void;
 
-    staffCancelPatient: (patientId: string, reason: string) => void;
+    staffCancelPatient: (patientId: string, payload: { mode: "no_show" } | { mode: "other"; reason: string }) => void;
 
     cancelModalPatientId: string | null;
     setCancelModalPatientId: (id: string | null) => void;
     singleMessagePatientId: string | null;
     setSingleMessagePatientId: (id: string | null) => void;
 
+    /** Ouvre la modale « colonne Rappel » (menu carte ou DnD lorsque le consentement doit être attesté). */
+    openMoveToRecallModal: (patientId: string) => void;
+
     activityLog: ActivityLogEntry[];
     appendActivityLog: (entry: Omit<ActivityLogEntry, "id" | "at"> & { at?: number }) => void;
 };
 
-const VersionCContext = createContext<VersionCContextValue | null>(null);
+const VersionDContext = createContext<VersionDContextValue | null>(null);
 
 function buildNotification(
     direction: NotificationDirection,
@@ -121,7 +130,7 @@ function buildNotification(
 }
 
 function consentPagePath(patientId: string) {
-    return `/version-c/patient-consent?patientId=${encodeURIComponent(patientId)}`;
+    return `/version-d/patient-consent?patientId=${encodeURIComponent(patientId)}`;
 }
 
 function consentAbsoluteUrl(patientId: string) {
@@ -130,7 +139,7 @@ function consentAbsoluteUrl(patientId: string) {
 }
 
 function confirmReturnPagePath(patientId: string) {
-    return `/version-c/confirm-return?patientId=${encodeURIComponent(patientId)}`;
+    return `/version-d/confirm-return?patientId=${encodeURIComponent(patientId)}`;
 }
 
 function confirmReturnAbsoluteUrl(patientId: string) {
@@ -169,6 +178,64 @@ function buildEmailConsentInvite(p: Patient): { body: string; consentUrl: string
     return { body, consentUrl };
 }
 
+function buildSmsManualConsentEnrollment(patientId: string): { body: string; consentUrl: string } {
+    const consentUrl = consentAbsoluteUrl(patientId);
+    const prefix = "Urgence — attente à distance: inscription confirmée. Suivi ou annulation:";
+    let body = `${prefix} ${consentUrl}`;
+    if (body.length > 160) {
+        const maxUrl = 160 - prefix.length - 1;
+        const clippedUrl = consentUrl.length > maxUrl ? `${consentUrl.slice(0, Math.max(0, maxUrl - 1))}…` : consentUrl;
+        body = `${prefix} ${clippedUrl}`;
+    }
+    return { body, consentUrl };
+}
+
+function buildEmailManualConsentEnrollment(p: Patient): { body: string; consentUrl: string } {
+    const consentUrl = consentAbsoluteUrl(p.id);
+    const name = fullName(p);
+    const body = [
+        `Bonjour ${name},`,
+        "",
+        "Vous êtes inscrit au service d’attente à distance pour la file d’attente de l’urgence. Le consentement a été enregistré par l’équipe pour votre dossier.",
+        "",
+        "Conservez ce lien pour consulter les informations de suivi ou pour annuler votre inscription au besoin :",
+        "",
+        `Lien sécurisé : ${consentUrl}`,
+        "",
+        "Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.",
+        "",
+        "— Attente à distance — Urgence",
+    ].join("\n");
+    return { body, consentUrl };
+}
+
+/** Confirmation d’inscription + lien (page consentement) lorsque le consentement est géré manuellement côté établissement. */
+function sendManualConsentEnrollmentNotifications(
+    append: (patientId: string, entry: Omit<NotificationEntry, "id" | "sentAt"> & { sentAt?: number }) => void,
+    patient: Patient,
+) {
+    if (!patient.consentManagedManually || patient.status !== "waiting") return;
+
+    if (patient.phone?.trim()) {
+        const sms = buildSmsManualConsentEnrollment(patient.id);
+        append(patient.id, {
+            direction: "outbound",
+            channel: "sms",
+            body: sms.body,
+            consentUrl: sms.consentUrl,
+        });
+    }
+    if (patient.email?.trim()) {
+        const email = buildEmailManualConsentEnrollment(patient);
+        append(patient.id, {
+            direction: "outbound",
+            channel: "email",
+            body: email.body,
+            consentUrl: email.consentUrl,
+        });
+    }
+}
+
 function sendConsentInvites(
     append: (patientId: string, entry: Omit<NotificationEntry, "id" | "sentAt"> & { sentAt?: number }) => void,
     patient: Patient,
@@ -196,13 +263,14 @@ function sendConsentInvites(
     }
 }
 
-export function VersionCProvider({ children }: { children: ReactNode }) {
+export function VersionDProvider({ children }: { children: ReactNode }) {
     const [query, setQuery] = useState("");
     const [patients, setPatients] = useState<Patient[]>([]);
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
     const [notificationsByPatient, setNotificationsByPatient] = useState<Record<string, NotificationEntry[]>>({});
+    const [moveToRecallModalPatientId, setMoveToRecallModalPatientId] = useState<string | null>(null);
 
     const patientsRef = useRef(patients);
     useEffect(() => {
@@ -419,6 +487,15 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         [patients, finalizeDistanceServiceExit],
     );
 
+    const cancelManualWaitingEnrollmentFromPatient = useCallback(
+        (patientId: string) => {
+            const p = patients.find((x) => x.id === patientId);
+            if (!p || p.status !== "waiting" || !p.consentManagedManually) return;
+            finalizeDistanceServiceExit(patientId, p, "patient_cancelled_queue");
+        },
+        [patients, finalizeDistanceServiceExit],
+    );
+
     const refuseConsent = useCallback(
         (patientId: string) => {
             const p = patients.find((x) => x.id === patientId);
@@ -427,6 +504,10 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         },
         [patients, finalizeDistanceServiceExit],
     );
+
+    const openMoveToRecallModal = useCallback((patientId: string) => {
+        setMoveToRecallModalPatientId(patientId);
+    }, []);
 
     const onDragStart = useCallback((event: DragStartEvent) => {
         setActiveId(event.active.id?.toString() ?? null);
@@ -447,7 +528,12 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             if (colMatch) {
                 const column = colMatch[1] as BoardColumnId;
                 const dragged = patients.find((p) => p.id === draggedId);
-                const next = statusWhenDroppedOnColumn(column, dragged?.status);
+                if (column === "recall" && dragged && patientRequiresConsentAttestationForRecallMove(dragged)) {
+                    openMoveToRecallModal(draggedId);
+                    setSelectedPatientId((cur) => cur ?? draggedId);
+                    return;
+                }
+                const next = statusWhenDroppedOnColumn(column, dragged);
                 if (dragged && dragged.status !== next) {
                     const patientLabel = `${fullName(dragged)} — ${dragged.fileNumber}`;
                     appendActivityLog({
@@ -469,7 +555,12 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             if (!overPatient) return;
             const draggedB = patients.find((p) => p.id === draggedId);
             const prevStatusB = draggedB?.status;
-            const next = statusWhenDroppedOnColumn(statusToColumn(overPatient.status), patients.find((p) => p.id === draggedId)?.status);
+            const next = statusWhenDroppedOnColumn(statusToColumn(overPatient.status), draggedB);
+            if (next === "recall" && draggedB && patientRequiresConsentAttestationForRecallMove(draggedB)) {
+                openMoveToRecallModal(draggedId);
+                setSelectedPatientId((cur) => cur ?? draggedId);
+                return;
+            }
             if (draggedB && prevStatusB !== undefined && prevStatusB !== next) {
                 const patientLabel = `${fullName(draggedB)} — ${draggedB.fileNumber}`;
                 appendActivityLog({
@@ -484,7 +575,7 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             notifyForStatusChange(draggedId, next);
             setSelectedPatientId((cur) => cur ?? draggedId);
         },
-        [appendActivityLog, patients, notifyForStatusChange],
+        [appendActivityLog, patients, notifyForStatusChange, openMoveToRecallModal],
     );
 
     const [addPatientOpen, setAddPatientOpen] = useState(false);
@@ -500,7 +591,7 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         if (editingPatientId) setAddPatientOpen(false);
     }, [editingPatientId]);
 
-    const [form, setForm] = useState<VersionCNewPatientForm>({
+    const [form, setForm] = useState<VersionDNewPatientForm>({
         firstName: "",
         lastName: "",
         fileNumber: "",
@@ -574,6 +665,7 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         });
         for (const p of created) {
             sendConsentInvites(appendNotification, p);
+            sendManualConsentEnrollmentNotifications(appendNotification, p);
         }
     }, [appendActivityLog, selectedPatientId, appendNotification]);
 
@@ -615,6 +707,8 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         // Seed initial notifications for the demo.
         if (status === "consentPending") {
             sendConsentInvites(appendNotification, patient);
+        } else {
+            sendManualConsentEnrollmentNotifications(appendNotification, patient);
         }
 
         setForm({
@@ -639,26 +733,49 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
 
         const edited = patientsRef.current.find((x) => x.id === editingPatientId);
         const prevLabel = edited ? `${fullName(edited)} — ${edited.fileNumber}` : editingPatientId;
+        const becameManualWaiting =
+            Boolean(edited?.status === "consentPending" && form.consentManagedManually);
 
         setPatients((prev) =>
-            prev.map((p) =>
-                p.id !== editingPatientId
-                    ? p
-                    : {
-                          ...p,
-                          firstName: form.firstName.trim() || p.firstName,
-                          lastName: form.lastName.trim() || p.lastName,
-                          fileNumber: form.fileNumber.trim() || "—",
-                          phone: form.phone.trim() || undefined,
-                          email: form.email.trim() || undefined,
-                          communicationLanguage: form.communicationLanguage,
-                          reason,
-                          notes: form.notes.trim() || undefined,
-                          priority: form.priority,
-                          consentManagedManually: form.consentManagedManually,
-                      },
-            ),
+            prev.map((p) => {
+                if (p.id !== editingPatientId) return p;
+                const consentPending = p.status === "consentPending";
+                const consentManualNext = consentPending ? form.consentManagedManually : p.consentManagedManually;
+                const statusNext =
+                    consentPending && form.consentManagedManually ? "waiting" : p.status;
+                return {
+                    ...p,
+                    firstName: form.firstName.trim() || p.firstName,
+                    lastName: form.lastName.trim() || p.lastName,
+                    fileNumber: form.fileNumber.trim() || "—",
+                    phone: form.phone.trim() || undefined,
+                    email: form.email.trim() || undefined,
+                    communicationLanguage: form.communicationLanguage,
+                    reason,
+                    notes: form.notes.trim() || undefined,
+                    priority: form.priority,
+                    consentManagedManually: consentManualNext,
+                    status: statusNext,
+                };
+            }),
         );
+
+        if (becameManualWaiting && edited) {
+            sendManualConsentEnrollmentNotifications(appendNotification, {
+                ...edited,
+                firstName: form.firstName.trim() || edited.firstName,
+                lastName: form.lastName.trim() || edited.lastName,
+                fileNumber: form.fileNumber.trim() || "—",
+                phone: form.phone.trim() || undefined,
+                email: form.email.trim() || undefined,
+                communicationLanguage: form.communicationLanguage,
+                reason,
+                notes: form.notes.trim() || undefined,
+                priority: form.priority,
+                consentManagedManually: true,
+                status: "waiting",
+            });
+        }
         const nextName = `${form.firstName.trim() || edited?.firstName || ""} ${form.lastName.trim() || edited?.lastName || ""}`.trim();
         appendActivityLog({
             kind: "patient_edited",
@@ -680,32 +797,51 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
             notes: "",
             consentManagedManually: false,
         });
-    }, [appendActivityLog, editingPatientId, form]);
+    }, [appendActivityLog, appendNotification, editingPatientId, form]);
 
     const staffCancelPatient = useCallback(
-        (patientId: string, reason: string) => {
+        (patientId: string, payload: { mode: "no_show" } | { mode: "other"; reason: string }) => {
             const p = patientsRef.current.find((x) => x.id === patientId);
             const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
-            const trimmed = reason.trim();
+
+            if (payload.mode === "no_show") {
+                appendActivityLog({
+                    kind: "staff_cancelled",
+                    patientId,
+                    patientLabel,
+                    summary: "Dossier terminé — absent",
+                    detail: "Le patient ne s’est pas présenté.",
+                });
+                setPatients((prev) =>
+                    movePatientToStatus(prev, patientId, "completed", {
+                        cancelled: true,
+                        completionCause: "no_show",
+                    }),
+                );
+                return;
+            }
+
+            const trimmed = payload.reason.trim();
+            if (!trimmed) return;
             appendActivityLog({
                 kind: "staff_cancelled",
                 patientId,
                 patientLabel,
                 summary: "Dossier annulé par l’équipe",
-                detail: trimmed || "Non spécifié",
+                detail: trimmed,
             });
             setPatients((prev) =>
                 movePatientToStatus(prev, patientId, "completed", {
                     cancelled: true,
                     completionCause: "staff_cancelled",
-                    cancellationReason: reason,
+                    cancellationReason: trimmed,
                 }),
             );
         },
         [appendActivityLog],
     );
 
-    const value: VersionCContextValue = {
+    const value: VersionDContextValue = {
         query,
         setQuery,
         patients,
@@ -737,6 +873,7 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         acceptConsent,
         withdrawConsent,
         refuseConsent,
+        cancelManualWaitingEnrollmentFromPatient,
         confirmReturn,
         cancelQueueRequestFromPatient,
 
@@ -751,16 +888,58 @@ export function VersionCProvider({ children }: { children: ReactNode }) {
         singleMessagePatientId,
         setSingleMessagePatientId,
 
+        openMoveToRecallModal,
+
         activityLog,
         appendActivityLog,
     };
 
-    return <VersionCContext.Provider value={value}>{children}</VersionCContext.Provider>;
+    const recallModalPatient = moveToRecallModalPatientId
+        ? (patients.find((p) => p.id === moveToRecallModalPatientId) ?? null)
+        : null;
+
+    return (
+        <VersionDContext.Provider value={value}>
+            {children}
+            {recallModalPatient ? (
+                <VersionDMoveToRecallModal
+                    isOpen
+                    onOpenChange={(open) => {
+                        if (!open) setMoveToRecallModalPatientId(null);
+                    }}
+                    patientLabel={fullName(recallModalPatient)}
+                    requiresConsentAttestation={patientRequiresConsentAttestationForRecallMove(recallModalPatient)}
+                    onConfirm={({ targetStatus, sendRecallMessage }) => {
+                        const id = recallModalPatient.id;
+                        const p = patientsRef.current.find((x) => x.id === id);
+                        if (!p) {
+                            setMoveToRecallModalPatientId(null);
+                            return;
+                        }
+                        if (p.status !== targetStatus) {
+                            appendActivityLog({
+                                kind: "status_menu",
+                                patientId: id,
+                                patientLabel: `${fullName(p)} — ${p.fileNumber}`,
+                                summary: "Changement de statut",
+                                detail: `${patientStatusLabelFr(p.status)} → ${patientStatusLabelFr(targetStatus)}`,
+                            });
+                        }
+                        setPatients((prev) => movePatientToStatus(prev, id, targetStatus));
+                        if (targetStatus === "recall" && sendRecallMessage) {
+                            notifyForStatusChange(id, "recall");
+                        }
+                        setMoveToRecallModalPatientId(null);
+                    }}
+                />
+            ) : null}
+        </VersionDContext.Provider>
+    );
 }
 
-export function useVersionC() {
-    const ctx = useContext(VersionCContext);
-    if (!ctx) throw new Error("useVersionC must be used within VersionCProvider");
+export function useVersionD() {
+    const ctx = useContext(VersionDContext);
+    if (!ctx) throw new Error("useVersionD must be used within VersionDProvider");
     return ctx;
 }
 

@@ -151,12 +151,12 @@ export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waiting
                                 ) : null}
                             </div>
 
-                            <div className="flex justify-end gap-3 border-t border-secondary p-6">
-                                <Button color="secondary" type="button" onClick={() => onOpenChange(false)}>
-                                    Cancel
-                                </Button>
+                            <div className="flex flex-wrap justify-start gap-3 border-t border-secondary p-6">
                                 <Button type="button" isDisabled={!canSend} onClick={handleSend}>
                                     Send message
+                                </Button>
+                                <Button color="tertiary" type="button" onClick={() => onOpenChange(false)}>
+                                    Cancel
                                 </Button>
                             </div>
                         </div>

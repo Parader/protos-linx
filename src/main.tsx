@@ -19,6 +19,13 @@ import { VersionCPatientPovPage } from "@/pages/version-c/version-c-patient-pov-
 import { VersionCPatientConsentNextPage } from "@/pages/version-c/version-c-patient-consent-next-page";
 import { VersionCPatientConsentPage } from "@/pages/version-c/version-c-patient-consent-page";
 import { VersionCConfirmReturnPage } from "@/pages/version-c/version-c-confirm-return-page";
+import { VersionDLayout } from "@/pages/version-d/version-d-layout";
+import { VersionDReportsPage } from "@/pages/version-d/version-d-reports-page";
+import { VersionDWorklistPage } from "@/pages/version-d/version-d-worklist-page";
+import { VersionDPatientPovPage } from "@/pages/version-d/version-d-patient-pov-page";
+import { VersionDPatientConsentNextPage } from "@/pages/version-d/version-d-patient-consent-next-page";
+import { VersionDPatientConsentPage } from "@/pages/version-d/version-d-patient-consent-page";
+import { VersionDConfirmReturnPage } from "@/pages/version-d/version-d-confirm-return-page";
 import { RouteProvider } from "@/providers/router-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "@/styles/globals.css";
@@ -48,6 +55,14 @@ createRoot(document.getElementById("root")!).render(
                             <Route path="patient-consent" element={<VersionCPatientConsentPage />} />
                             <Route path="patient-consent/next" element={<VersionCPatientConsentNextPage />} />
                             <Route path="confirm-return" element={<VersionCConfirmReturnPage />} />
+                        </Route>
+                        <Route path="/version-d" element={<VersionDLayout />}>
+                            <Route index element={<VersionDWorklistPage />} />
+                            <Route path="reports" element={<VersionDReportsPage />} />
+                            <Route path="patient" element={<VersionDPatientPovPage />} />
+                            <Route path="patient-consent" element={<VersionDPatientConsentPage />} />
+                            <Route path="patient-consent/next" element={<VersionDPatientConsentNextPage />} />
+                            <Route path="confirm-return" element={<VersionDConfirmReturnPage />} />
                         </Route>
                         <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -25,6 +25,11 @@ const PROTOTYPES: PrototypeItem[] = [
         href: "/version-c",
     },
     {
+        title: "Version D",
+        description: "Copie de la Version C pour itérer sans impacter la démo C.",
+        href: "/version-d",
+    },
+    {
         title: "Épisodes de soins",
         description: "Figma mockup — trajectoire de soins, questionnaire de triage.",
         href: "/mockup/trajectory-care",

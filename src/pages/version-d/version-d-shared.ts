@@ -57,6 +57,10 @@ export type Patient = {
     cancellationReason?: string;
     /** Consent bypassed because it was managed manually outside the platform. */
     consentManagedManually?: boolean;
+    /**
+     * Statut au moment d’une fermeture annulée — permet de rouvrir dans la même étape (p. ex. consentement en attente vs attente).
+     */
+    preCancellationStatus?: PatientStatus;
 };
 
 export type BoardColumnId = "waiting" | "recall" | "completed";
@@ -134,6 +138,14 @@ export function defaultStatusForNewPatient(consentManagedManually: boolean | und
     return consentManagedManually ? "waiting" : "consentPending";
 }
 
+/** Consentement obtenu (plateforme ou manuel), hors refus explicite — pour l’affichage de la fiche en édition. */
+export function patientHasConsentEffectivelyRecorded(p: Patient): boolean {
+    if (p.consentManagedManually) return true;
+    if (p.status === "consentPending") return false;
+    if (p.status === "completed" && p.cancelled && p.completionCause === "consent_refused") return false;
+    return true;
+}
+
 /** Ordre d’arrivée dans la file (inscription) : le plus ancien en premier. */
 export function comparePatientsByArrivalAsc(a: Patient, b: Patient): number {
     const d = a.createdAt - b.createdAt;
@@ -148,9 +160,27 @@ export function comparePatientsCompletedDesc(a: Patient, b: Patient): number {
     return d !== 0 ? d : a.id.localeCompare(b.id);
 }
 
-export function statusWhenDroppedOnColumn(column: BoardColumnId, prevStatus: PatientStatus | undefined): PatientStatus {
+/**
+ * Fiche sans consentement enregistré (actif ou avant une fermeture annulée) : le passage en colonne Rappel
+ * doit être précédé d’une confirmation explicite par l’équipe.
+ */
+export function patientRequiresConsentAttestationForRecallMove(p: Patient): boolean {
+    if (p.consentManagedManually) return false;
+    if (p.status === "consentPending") return true;
+    if (p.status === "completed" && p.cancelled && p.preCancellationStatus === "consentPending") return true;
+    return false;
+}
+
+export function statusWhenDroppedOnColumn(column: BoardColumnId, dragged: Patient | undefined): PatientStatus {
+    const prevStatus = dragged?.status;
     if (column === "waiting") {
-        // Preserve consentPending if they are still pending consent.
+        if (dragged?.status === "completed" && dragged.cancelled && dragged.preCancellationStatus != null) {
+            const snap = dragged.preCancellationStatus;
+            if (snap === "consentPending" || snap === "waiting") {
+                return snap;
+            }
+            return "waiting";
+        }
         return prevStatus === "consentPending" ? "consentPending" : "waiting";
     }
     if (column === "recall") return "recall";
@@ -183,6 +213,8 @@ export function movePatientToStatus(
                     : Date.now()
                 : undefined;
 
+        const preCancellationStatus = next === "completed" && cancelledNext ? p.status : undefined;
+
         return {
             ...p,
             status: next,
@@ -190,6 +222,7 @@ export function movePatientToStatus(
             completionCause: completionCauseNext,
             completedAt,
             cancellationReason: cancellationReasonNext,
+            preCancellationStatus,
         };
     });
 }

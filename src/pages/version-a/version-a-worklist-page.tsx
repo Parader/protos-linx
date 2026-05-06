@@ -415,10 +415,7 @@ export function VersionAWorklistPage() {
                                     </label>
                                 </div>
 
-                                <div className="flex items-center justify-end gap-3 border-t border-secondary p-6">
-                                    <Button color="secondary" onClick={() => setAddPatientOpen(false)}>
-                                        Cancel
-                                    </Button>
+                                <div className="flex flex-wrap items-center justify-start gap-3 border-t border-secondary p-6">
                                     <Button
                                         onClick={() => {
                                             addPatient();
@@ -426,6 +423,9 @@ export function VersionAWorklistPage() {
                                         }}
                                     >
                                         Add patient
+                                    </Button>
+                                    <Button color="tertiary" onClick={() => setAddPatientOpen(false)}>
+                                        Cancel
                                     </Button>
                                 </div>
                             </div>
@@ -519,11 +519,11 @@ export function VersionAWorklistPage() {
                                         </label>
                                     </div>
 
-                                    <div className="flex items-center justify-end gap-3 border-t border-secondary p-6">
-                                        <Button color="secondary" onClick={() => setEditingPatientId(null)}>
+                                    <div className="flex flex-wrap items-center justify-start gap-3 border-t border-secondary p-6">
+                                        <Button onClick={saveEditedPatient}>Save changes</Button>
+                                        <Button color="tertiary" onClick={() => setEditingPatientId(null)}>
                                             Cancel
                                         </Button>
-                                        <Button onClick={saveEditedPatient}>Save changes</Button>
                                     </div>
                                 </div>
                             ) : null

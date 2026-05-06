@@ -54,10 +54,7 @@ export function VersionCStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                     onChange={(v) => setReason(v)}
                                     placeholder="p. ex. doublon, erreur d’inscription, patient retiré sur demande de l’établissement…"
                                 />
-                                <div className="flex justify-end gap-3 pt-2">
-                                    <Button color="tertiary" size="md" onClick={close}>
-                                        Fermer
-                                    </Button>
+                                <div className="flex flex-wrap justify-start gap-3 pt-2">
                                     <Button
                                         color="primary-destructive"
                                         size="md"
@@ -70,6 +67,9 @@ export function VersionCStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                         }}
                                     >
                                         Confirmer l’annulation
+                                    </Button>
+                                    <Button color="tertiary" size="md" onClick={close}>
+                                        Fermer
                                     </Button>
                                 </div>
                             </div>
