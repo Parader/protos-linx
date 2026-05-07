@@ -87,7 +87,7 @@ export function VersionDMoveToRecallModal({
                                                 checked={targetStatus === "recall"}
                                                 onChange={() => setTargetStatus("recall")}
                                             />
-                                            <span className="text-primary">Rappelé — en attente de présentation</span>
+                                            <span className="text-primary">Rappelé — en attente de confirmation</span>
                                         </label>
                                         <label
                                             className={cx(

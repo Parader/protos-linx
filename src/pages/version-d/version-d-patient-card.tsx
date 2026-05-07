@@ -248,7 +248,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
     const showWaitTimer = patient.status !== "completed";
     const currentColumn = statusToColumn(patient.status);
     const showMoveMenuWaiting = currentColumn !== "waiting";
-    const showMoveMenuRecall = currentColumn !== "recall" && !(patient.status === "completed" && !patient.cancelled);
+    const showMoveMenuRecall = currentColumn !== "recall";
     const showMoveMenuCompleted = patient.status !== "completed";
     const showMoveMenuSection = showMoveMenuWaiting || showMoveMenuRecall || showMoveMenuCompleted;
 
