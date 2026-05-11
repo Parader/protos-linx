@@ -6,6 +6,8 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { formatNanpFromRaw } from "@/utils/na-phone-format";
+import type { VersionCdPagesCore } from "@/lib/ved-app-strings/version-cd-pages-core";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { VERSION_D_USE_CLASSIC_ADD_PATIENT_MODAL } from "@/pages/version-d/version-d-add-patient-modal-config";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { patientHasConsentEffectivelyRecorded } from "@/pages/version-d/version-d-shared";
@@ -17,7 +19,6 @@ function Divider() {
 type PriorityOption = {
     id: "P5" | "P4" | "P3";
     label: string;
-    description: string;
     surface: string;
     ring: string;
     pill: string;
@@ -25,11 +26,10 @@ type PriorityOption = {
     pillText: string;
 };
 
-const PRIORITIES: PriorityOption[] = [
+const PRIORITY_STYLES: PriorityOption[] = [
     {
         id: "P5",
         label: "P5",
-        description: "Lowest, evaluation can be deferred.",
         surface: "bg-white",
         ring: "ring-1 ring-[#D0D5DD]",
         pill: "bg-[#ECFDF3]",
@@ -39,7 +39,6 @@ const PRIORITIES: PriorityOption[] = [
     {
         id: "P4",
         label: "P4",
-        description: "Medium, stable condition but should be evaluated promptly.",
         surface: "bg-white",
         ring: "ring-1 ring-[#D0D5DD]",
         pill: "bg-[#FFFAEB]",
@@ -49,7 +48,6 @@ const PRIORITIES: PriorityOption[] = [
     {
         id: "P3",
         label: "P3",
-        description: "Highest, should be addressed as soon as possible.",
         surface: "bg-white",
         ring: "ring-1 ring-[#D0D5DD]",
         pill: "bg-[#FFF1F3]",
@@ -58,8 +56,18 @@ const PRIORITIES: PriorityOption[] = [
     },
 ];
 
+function priorityHint(id: PriorityOption["id"], w: VersionCdPagesCore["wizard"]) {
+    if (id === "P3") return w.priorityP3Hint;
+    if (id === "P4") return w.priorityP4Hint;
+    return w.priorityP5Hint;
+}
+
 /** Formulaire long d’origine — ajout (si activé) et édition d’un patient existant. */
 export function VersionDAddPatientModalClassic() {
+    const { strings } = useVEDLocale();
+    const w = strings.versionD.pages.wizard;
+    const c = strings.versionD.pages.classicAddPatientC;
+    const d = strings.versionD.pages.classicAddPatientD;
     const {
         addPatientOpen,
         setAddPatientOpen,
@@ -153,14 +161,14 @@ export function VersionDAddPatientModalClassic() {
                         <div className="w-full max-w-[720px] rounded-xl bg-[#F9FAFB] shadow-lg ring-1 ring-[#E2E5EB]">
                             <div className="flex items-start justify-between gap-6 p-6">
                                 <div className="text-2xl font-medium text-[#101828]">
-                                    {isEditMode ? "Modifier le patient" : "Ajouter un patient"}
+                                    {isEditMode ? c.titleEdit : c.titleAdd}
                                 </div>
                                 <Button
                                     type="button"
                                     color="tertiary"
                                     size="sm"
                                     iconLeading={XClose}
-                                    aria-label="Fermer"
+                                    aria-label={w.closeAria}
                                     excludeFromTabOrder
                                     className="size-10 rounded-lg p-0 text-[#667085] hover:bg-white"
                                     onClick={() => {
@@ -173,22 +181,22 @@ export function VersionDAddPatientModalClassic() {
                             <div className="flex flex-col gap-6 px-6 pb-6">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <Input
-                                        label="Prénom"
+                                        label={w.firstName}
                                         value={form.firstName}
                                         onChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
-                                        placeholder="Jane"
+                                        placeholder={w.fallbackFirstName}
                                     />
                                     <Input
-                                        label="Nom"
+                                        label={w.lastName}
                                         value={form.lastName}
                                         onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
-                                        placeholder="Doe"
+                                        placeholder={w.fallbackLastName}
                                     />
                                     <Input
-                                        label="Numéro de dossier"
+                                        label={w.fileNumber}
                                         value={form.fileNumber}
                                         onChange={(v) => setForm((f) => ({ ...f, fileNumber: v }))}
-                                        placeholder="444555666"
+                                        placeholder={w.fileNumberPh}
                                     />
                                     <div className="hidden sm:block" aria-hidden />
                                 </div>
@@ -197,38 +205,36 @@ export function VersionDAddPatientModalClassic() {
 
                                 <div className="flex flex-col gap-4">
                                     <div>
-                                        <div className="text-base font-medium text-black">Contacter le patient</div>
-                                        <div className="text-base text-[#667085]">
-                                            Au moins un moyen (mobile ou courriel) est requis pour envoyer les notifications.
-                                        </div>
+                                        <div className="text-base font-medium text-black">{d.contactSection}</div>
+                                        <div className="text-base text-[#667085]">{c.contactBlurb}</div>
                                     </div>
                                     <div className="grid gap-4 sm:grid-cols-2">
                                         <Input
-                                            label="Mobile (SMS)"
+                                            label={w.mobileSms}
                                             isInvalid={showContactError}
                                             value={form.phone}
                                             onChange={(v) => setForm((f) => ({ ...f, phone: formatNanpFromRaw(v) }))}
                                             onBlur={() => setContactTouched(true)}
-                                            placeholder="(514) 555-0123"
+                                            placeholder={w.mobilePh}
                                             inputMode="tel"
                                             autoComplete="tel"
                                         />
                                         <Input
-                                            label="Courriel"
+                                            label={w.email}
                                             isInvalid={showContactError}
                                             value={form.email}
                                             onChange={(v) => setForm((f) => ({ ...f, email: v }))}
                                             onBlur={() => setContactTouched(true)}
-                                            placeholder="janedoe@akinox.com"
+                                            placeholder={w.emailPh}
                                         />
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        <div className="text-sm font-medium text-[#344054]">Langue de communication</div>
+                                        <div className="text-sm font-medium text-[#344054]">{d.commLanguage}</div>
                                         <div className="flex flex-wrap gap-3">
                                             {(
                                                 [
-                                                    { id: "fr" as const, label: "Français" },
-                                                    { id: "en" as const, label: "Anglais" },
+                                                    { id: "fr" as const, label: d.langFr },
+                                                    { id: "en" as const, label: d.langEn },
                                                 ] as const
                                             ).map((opt) => {
                                                 const selected = form.communicationLanguage === opt.id;
@@ -256,32 +262,30 @@ export function VersionDAddPatientModalClassic() {
                                         </div>
                                     </div>
                                     {showContactError ? (
-                                        <p className="text-sm font-medium text-[#B42318]">
-                                            Indiquez un numéro de mobile ou une adresse courriel (au moins l’un des deux).
-                                        </p>
+                                        <p className="text-sm font-medium text-[#B42318]">{c.contactError}</p>
                                     ) : null}
                                 </div>
 
                                 <Divider />
 
                                 <Input
-                                    label="Motif de présentation à l’urgence"
+                                    label={w.step3Title}
                                     isRequired
                                     isInvalid={showReasonError}
-                                    hint={showReasonError ? "Ce champ est obligatoire." : undefined}
+                                    hint={showReasonError ? w.reasonRequired : undefined}
                                     value={form.reason}
                                     onChange={(v) => {
                                         setForm((f) => ({ ...f, reason: v }));
                                         if (v.trim()) setReasonTouched(false);
                                     }}
                                     onBlur={() => setReasonTouched(true)}
-                                    placeholder="p. ex. céphalée, fièvre…"
+                                    placeholder={w.reasonPh}
                                 />
 
                                 <div className="flex flex-col gap-2">
-                                    <div className="text-sm font-medium text-[#344054]">Priorité</div>
+                                    <div className="text-sm font-medium text-[#344054]">{d.priority}</div>
                                     <div className="grid gap-4 md:grid-cols-3">
-                                        {PRIORITIES.map((opt) => {
+                                        {PRIORITY_STYLES.map((opt) => {
                                             const selected = form.priority === opt.id;
                                             return (
                                                 <label
@@ -310,11 +314,7 @@ export function VersionDAddPatientModalClassic() {
                                                                 selected ? "text-[#0064B5]" : "text-[#667085]",
                                                             )}
                                                         >
-                                                            {opt.id === "P5"
-                                                                ? "La plus basse, l’évaluation peut être reportée."
-                                                                : opt.id === "P4"
-                                                                  ? "Moyenne, état stable mais doit être évalué rapidement."
-                                                                  : "La plus élevée, doit être prise en charge dès que possible."}
+                                                            {priorityHint(opt.id, w)}
                                                         </div>
                                                     </div>
                                                     <input
@@ -337,10 +337,10 @@ export function VersionDAddPatientModalClassic() {
                                 </div>
 
                                 <TextArea
-                                    label="Notes"
+                                    label={w.notes}
                                     value={form.notes}
                                     onChange={(v) => setForm((f) => ({ ...f, notes: v }))}
-                                    placeholder="Notes (optionnel)"
+                                    placeholder={c.notesOptionalPlaceholder}
                                     rows={3}
                                 />
 
@@ -364,24 +364,13 @@ export function VersionDAddPatientModalClassic() {
                                             {isConsentManualLocked && editingPatient
                                                 ? patientHasConsentEffectivelyRecorded(editingPatient)
                                                     ? editingPatient.consentManagedManually
-                                                        ? "Le consentement a été géré manuellement."
-                                                        : "Le consentement a été enregistré via la plateforme."
-                                                    : "Consentement non enregistré pour ce dossier."
-                                                : "Le consentement a été géré manuellement."}
+                                                        ? d.consentLockedLabelManual
+                                                        : d.consentLockedLabelPlatform
+                                                    : d.consentLockedLabelNone
+                                                : w.manualConsentLabel}
                                         </div>
                                         <div className="mt-1 text-sm text-[#667085]">
-                                            {isConsentManualLocked ? (
-                                                <>
-                                                    Le consentement est déjà pris en compte pour ce dossier ; il ne peut pas être modifié ou retiré
-                                                    depuis cette fiche.
-                                                </>
-                                            ) : (
-                                                <>
-                                                    Cocher cette case permet au patient de contourner l’étape de consentement et passe la fiche en
-                                                    attente lors de l’enregistrement. La laisser décochée déclenchera une notification demandant le
-                                                    consentement via la plateforme.
-                                                </>
-                                            )}
+                                            {isConsentManualLocked ? d.consentLockedHelp : d.consentUnlockedHelp}
                                         </div>
                                     </div>
                                 </label>
@@ -409,7 +398,7 @@ export function VersionDAddPatientModalClassic() {
                                             }
                                         }}
                                     >
-                                        {isEditMode ? "Enregistrer" : "Ajouter à la file d’attente"}
+                                        {isEditMode ? c.save : w.submitQueue}
                                     </Button>
                                     <Button
                                         color="tertiary"
@@ -419,7 +408,7 @@ export function VersionDAddPatientModalClassic() {
                                             close();
                                         }}
                                     >
-                                        Annuler
+                                        {w.cancel}
                                     </Button>
                                 </div>
                             </div>

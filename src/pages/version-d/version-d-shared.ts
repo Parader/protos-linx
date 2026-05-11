@@ -95,28 +95,8 @@ export type ActivityLogEntry = {
     direction?: NotificationDirection;
 };
 
-export function patientStatusLabelFr(s: PatientStatus): string {
-    switch (s) {
-        case "waiting":
-            return "En attente";
-        case "consentPending":
-            return "Consentement en attente";
-        case "recall":
-            return "Rappel";
-        case "arrived":
-            return "Retour confirmé";
-        case "completed":
-            return "Terminé";
-        default:
-            return s;
-    }
-}
-
-export const BOARD_COLUMN_META: { id: BoardColumnId; title: string }[] = [
-    { id: "waiting", title: "Attente" },
-    { id: "recall", title: "Rappel" },
-    { id: "completed", title: "Terminé" },
-];
+/** Column order on the worklist board — titles come from `useVEDLocale().strings.versionD`. */
+export const BOARD_COLUMN_ORDER: readonly BoardColumnId[] = ["waiting", "recall", "completed"];
 
 export function fullName(p: Patient): string {
     return `${p.firstName} ${p.lastName}`.trim() || "Unnamed patient";

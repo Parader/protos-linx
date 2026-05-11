@@ -10,13 +10,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Patient, PatientStatus } from "@/pages/version-a/version-a-patient-card";
 import { generateRandomPatients, randomPatientFormFields } from "@/pages/version-a/version-a-random-patients";
 import {
+    ALL_AB_PATIENT_STATUSES,
     createId,
     movePatientToStatus,
     normalizeFormPriority,
-    STATUS_LABELS,
     type FormPatientPriority,
     type PreferredCommunication,
 } from "@/pages/version-a/version-a-shared";
+import { useVEDLocale } from "@/lib/ved-locale";
 
 export type VersionAFormState = {
     name: string;
@@ -71,6 +72,7 @@ export type VersionAContextValue = {
 const VersionAContext = createContext<VersionAContextValue | null>(null);
 
 export function VersionAProvider({ children }: { children: ReactNode }) {
+    const { strings } = useVEDLocale();
     const [activeId, setActiveId] = useState<string | null>(null);
     const [query, setQuery] = useState("");
     const [patients, setPatients] = useState<Patient[]>(() => []);
@@ -144,7 +146,7 @@ export function VersionAProvider({ children }: { children: ReactNode }) {
             setActiveId(null);
             if (!draggedId || !overId) return;
 
-            const overStatus = (Object.keys(STATUS_LABELS) as PatientStatus[]).find((s) => overId === `col:${s}`);
+            const overStatus = ALL_AB_PATIENT_STATUSES.find((s) => overId === `col:${s}`);
             if (overStatus) {
                 setPatients((prev) => movePatientToStatus(prev, draggedId, overStatus));
                 return;
@@ -167,12 +169,12 @@ export function VersionAProvider({ children }: { children: ReactNode }) {
             ...prev,
             {
                 id: createId(),
-                name: form.name.trim() || "Unnamed patient",
-                fileNumber: form.fileNumber.trim() || "—",
+                name: form.name.trim() || strings.worklistAb.unnamedPatient,
+                fileNumber: form.fileNumber.trim() || strings.worklistAb.dashFallback,
                 phone: form.phone.trim() || undefined,
                 email: form.email.trim() || undefined,
                 preferredCommunication: form.preferredCommunication,
-                reason: form.reason.trim() || "—",
+                reason: form.reason.trim() || strings.worklistAb.dashFallback,
                 priority: form.priority,
                 notes: form.notes.trim() || undefined,
                 consentGiven: form.consentGiven,
@@ -193,18 +195,18 @@ export function VersionAProvider({ children }: { children: ReactNode }) {
             consentGiven: false,
             priority: "P3",
         }));
-    }, [form]);
+    }, [form, strings.worklistAb.dashFallback, strings.worklistAb.unnamedPatient]);
 
     const autofillFormRandom = useCallback(() => {
-        const r = randomPatientFormFields();
+        const r = randomPatientFormFields(strings.worklistAb.consultationReasons);
         setForm((f) => ({ ...f, ...r }));
-    }, []);
+    }, [strings.worklistAb.consultationReasons]);
 
     const addBulkRandomPatients = useCallback(() => {
         const n = Math.min(500, Math.max(0, Math.floor(Number.parseInt(bulkCount, 10) || 0)));
         if (n === 0) return;
-        setPatients((prev) => [...prev, ...generateRandomPatients(n)]);
-    }, [bulkCount]);
+        setPatients((prev) => [...prev, ...generateRandomPatients(n, strings.worklistAb.consultationReasons)]);
+    }, [bulkCount, strings.worklistAb.consultationReasons]);
 
     const [addPatientOpen, setAddPatientOpen] = useState(false);
 
@@ -252,12 +254,12 @@ export function VersionAProvider({ children }: { children: ReactNode }) {
                 p.id === editingPatientId
                     ? {
                           ...p,
-                          name: editForm.name.trim() || "Unnamed patient",
-                          fileNumber: editForm.fileNumber.trim() || "—",
+                          name: editForm.name.trim() || strings.worklistAb.unnamedPatient,
+                          fileNumber: editForm.fileNumber.trim() || strings.worklistAb.dashFallback,
                           phone: editForm.phone.trim() || undefined,
                           email: editForm.email.trim() || undefined,
                           preferredCommunication: editForm.preferredCommunication,
-                          reason: editForm.reason.trim() || "—",
+                          reason: editForm.reason.trim() || strings.worklistAb.dashFallback,
                           priority: editForm.priority,
                           notes: editForm.notes.trim() || undefined,
                           consentGiven: editForm.consentGiven,
@@ -266,7 +268,7 @@ export function VersionAProvider({ children }: { children: ReactNode }) {
             ),
         );
         setEditingPatientId(null);
-    }, [editingPatientId, editForm]);
+    }, [editingPatientId, editForm, strings.worklistAb.dashFallback, strings.worklistAb.unnamedPatient]);
 
     const acceptConsent = useCallback((patientId: string) => {
         setPatients((prev) => {

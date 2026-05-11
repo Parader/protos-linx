@@ -11,37 +11,8 @@ export function normalizeFormPriority(p: PatientPriority): FormPatientPriority {
     return p === "P1" || p === "P2" || p === "P3" ? p : "P3";
 }
 
-/** Add patient “reason for consultation” suggestions (datalist + random demos). */
-export const CONSULTATION_REASON_SUGGESTIONS: readonly string[] = [
-    "Headache",
-    "Chest pain",
-    "Abdominal pain",
-    "Shortness of breath",
-    "Fever",
-    "Dizziness",
-    "Back pain",
-    "Sore throat",
-    "Cut / laceration",
-    "Anxiety / panic",
-    "Nausea",
-    "Rash",
-    "Follow-up",
-    "Medication refill",
-];
-
-export const STATUS_LABELS: Record<PatientStatus, string> = {
-    consent: "Consent",
-    waiting: "Waiting",
-    calledBack: "Called back",
-    confirmed: "Confirmed",
-    completed: "Completed",
-};
-
-/** Column titles for the first board column (waiting + consent lanes). */
-export const QUEUE_LANE_LABELS: Record<"waiting" | "consent", string> = {
-    waiting: "Waiting",
-    consent: "Pending consent",
-};
+/** All workflow statuses (for DnD targets, etc.). UI labels live in `ved-app-strings` / `useVEDLocale().strings`. */
+export const ALL_AB_PATIENT_STATUSES: readonly PatientStatus[] = ["consent", "waiting", "calledBack", "confirmed", "completed"];
 
 export type BoardSection = { key: string; statuses: PatientStatus[] };
 

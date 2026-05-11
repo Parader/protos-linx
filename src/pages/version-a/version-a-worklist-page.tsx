@@ -30,12 +30,8 @@ import {
     PatientFormReasonInput,
     PatientFormReachSection,
 } from "@/pages/version-a/version-a-patient-form-fields";
-import {
-    BOARD_SECTIONS,
-    movePatientToStatus,
-    QUEUE_LANE_LABELS,
-    STATUS_LABELS,
-} from "@/pages/version-a/version-a-shared";
+import { BOARD_SECTIONS, movePatientToStatus } from "@/pages/version-a/version-a-shared";
+import { useVEDLocale } from "@/lib/ved-locale";
 
 const cardDropAnimation: DropAnimation = {
     duration: 320,
@@ -87,6 +83,10 @@ export function VersionAWorklistPage() {
         sendStaffMessageToAllWaiting,
     } = useVersionA();
 
+    const { strings } = useVEDLocale();
+    const wb = strings.worklistAb;
+    const w = wb.worklistPage;
+
     type StaffMessageTarget = null | { kind: "waiting" } | { kind: "patient"; id: string; name: string };
     const [staffMsgTarget, setStaffMsgTarget] = useState<StaffMessageTarget>(null);
 
@@ -98,9 +98,9 @@ export function VersionAWorklistPage() {
                 <header className="flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p className="text-[11px] font-medium text-[#5E6C84]">Spaces / VED dispatch</p>
+                            <p className="text-[11px] font-medium text-[#5E6C84]">{w.crumb}</p>
                             <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
-                                <h1 className="text-xl font-semibold tracking-tight text-[#172B4D]">Worklist</h1>
+                                <h1 className="text-xl font-semibold tracking-tight text-[#172B4D]">{w.title}</h1>
                                 <span className="rounded-full bg-[#DFE1E6] px-2 py-0.5 text-xs font-semibold text-[#42526E]">
                                     {patients.length}
                                 </span>
@@ -109,7 +109,7 @@ export function VersionAWorklistPage() {
                         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                             <DialogTrigger>
                                 <Button color="secondary" size="md" iconLeading={Settings01}>
-                                    Settings
+                                    {w.settings}
                                 </Button>
                                 <ModalOverlay isDismissable>
                                     <Modal>
@@ -119,32 +119,32 @@ export function VersionAWorklistPage() {
                                                     <div className="flex items-start justify-between gap-4 border-b border-secondary p-6">
                                                         <div>
                                                             <Heading slot="title" className="text-md font-semibold text-primary">
-                                                                Settings
+                                                                {w.settingsTitle}
                                                             </Heading>
                                                             <div className="mt-1 text-sm text-tertiary">
-                                                                Prototype tools for testing the worklist.
+                                                                {w.settingsSubtitle}
                                                             </div>
                                                         </div>
                                                         <Button color="tertiary" size="sm" onClick={close}>
-                                                            Close
+                                                            {w.close}
                                                         </Button>
                                                     </div>
 
                                                     <div className="flex flex-col gap-4 p-6">
                                                         <div className="min-w-0 max-w-[10rem]">
                                                             <Input
-                                                                label="Bulk add"
+                                                                label={w.bulkAddLabel}
                                                                 size="sm"
                                                                 type="text"
                                                                 inputMode="numeric"
                                                                 value={bulkCount}
                                                                 onChange={(v) => setBulkCount(v.replace(/\D/g, "").slice(0, 3))}
                                                                 placeholder="48"
-                                                                hint="Random patients (max 500)"
+                                                                hint={w.bulkAddHint}
                                                             />
                                                         </div>
                                                         <Button color="secondary" size="md" iconLeading={ZapFast} onClick={addBulkRandomPatients}>
-                                                            Add random patients
+                                                            {w.addRandomPatients}
                                                         </Button>
                                                         <Button
                                                             color="tertiary"
@@ -152,7 +152,7 @@ export function VersionAWorklistPage() {
                                                             onClick={() => setPatients([])}
                                                             isDisabled={patients.length === 0}
                                                         >
-                                                            Clear list
+                                                            {w.clearList}
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -167,14 +167,14 @@ export function VersionAWorklistPage() {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                         <InputBase
                             icon={SearchLg}
-                            placeholder="Search board…"
+                            placeholder={w.searchPlaceholder}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             wrapperClassName="bg-primary min-w-0 w-full flex-1 sm:max-w-xl"
                         />
                         <div className="flex shrink-0 flex-wrap items-center gap-2">
                             <Button size="md" iconLeading={Plus} onClick={() => setAddPatientOpen(true)}>
-                                New patient
+                                {w.newPatient}
                             </Button>
                             <Button
                                 color="secondary"
@@ -183,7 +183,7 @@ export function VersionAWorklistPage() {
                                 isDisabled={waitingLaneCount === 0}
                                 onClick={() => setStaffMsgTarget({ kind: "waiting" })}
                             >
-                                Message Waiting
+                                {w.messageWaiting}
                             </Button>
                         </div>
                     </div>
@@ -193,13 +193,10 @@ export function VersionAWorklistPage() {
             {patients.length === 0 ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-16">
                     <div className="max-w-md text-center">
-                        <h2 className="text-lg font-semibold tracking-tight text-[#172B4D]">No patients yet</h2>
-                        <p className="mt-2 text-sm leading-relaxed text-[#5E6C84]">
-                            Create a patient to start moving them through consent, the queue, callbacks, and completion from this
-                            worklist.
-                        </p>
+                        <h2 className="text-lg font-semibold tracking-tight text-[#172B4D]">{w.emptyTitle}</h2>
+                        <p className="mt-2 text-sm leading-relaxed text-[#5E6C84]">{w.emptyBody}</p>
                         <Button className="mt-8" size="lg" iconLeading={Plus} onClick={() => setAddPatientOpen(true)}>
-                            New patient
+                            {w.newPatient}
                         </Button>
                     </div>
                 </div>
@@ -229,8 +226,8 @@ export function VersionAWorklistPage() {
                                                             <div className="flex min-w-0 flex-1 items-center gap-2">
                                                                 <span className="text-[11px] font-semibold uppercase tracking-wide text-[#5E6C84]">
                                                                     {status === "waiting" || status === "consent"
-                                                                        ? QUEUE_LANE_LABELS[status]
-                                                                        : STATUS_LABELS[status]}
+                                                                        ? wb.queueLaneLabels[status]
+                                                                        : wb.statusLabels[status]}
                                                                 </span>
                                                                 <span className="rounded-full bg-[#DFE1E6] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#42526E]">
                                                                     {lanePatients?.length ?? 0}
@@ -240,7 +237,7 @@ export function VersionAWorklistPage() {
                                                                 type="button"
                                                                 className="flex size-7 shrink-0 items-center justify-center rounded-md text-[#5E6C84] transition-colors hover:bg-[#DFE1E6]/80 hover:text-[#172B4D]"
                                                                 aria-expanded={!isCollapsed}
-                                                                aria-label={isCollapsed ? "Expand list" : "Collapse list"}
+                                                                aria-label={isCollapsed ? w.expandLane : w.collapseLane}
                                                                 onClick={() => toggleLaneCollapsed(status)}
                                                             >
                                                                 <ChevronDown
@@ -255,7 +252,7 @@ export function VersionAWorklistPage() {
                                                                 {isCollapsed ? (
                                                                     lanePatients.length > 0 ? (
                                                                         <div className="rounded-md border border-dashed border-[#C1C7D0] bg-[#F4F5F7]/80 px-2 py-2 text-center text-[11px] leading-snug text-[#5E6C84]">
-                                                                            Collapsed — expand to view cards, or drop here
+                                                                            {w.collapsedHint}
                                                                         </div>
                                                                     ) : (
                                                                         <div className="min-h-8" aria-hidden />
@@ -348,24 +345,24 @@ export function VersionAWorklistPage() {
                                 <div className="flex items-start justify-between gap-4 border-b border-secondary p-6">
                                     <div>
                                         <Heading slot="title" className="text-md font-semibold text-primary">
-                                            Add patient
+                                            {w.addPatientTitle}
                                         </Heading>
-                                        <div className="mt-1 text-sm text-tertiary">Create a patient and place them in the correct step.</div>
+                                        <div className="mt-1 text-sm text-tertiary">{w.addPatientSubtitle}</div>
                                     </div>
                                     <div className="flex shrink-0 items-center gap-2">
                                         <Button color="secondary" size="sm" iconLeading={ZapFast} onClick={autofillFormRandom}>
-                                            Autofill random
+                                            {w.autofillRandom}
                                         </Button>
                                         <Button color="tertiary" size="sm" onClick={() => setAddPatientOpen(false)}>
-                                            Close
+                                            {w.close}
                                         </Button>
                                     </div>
                                 </div>
 
                                 <div className="grid gap-4 p-6 sm:grid-cols-2">
-                                    <Input label="Name" isRequired value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Jane Doe" />
+                                    <Input label={w.name} isRequired value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Jane Doe" />
                                     <Input
-                                        label="File number"
+                                        label={w.fileNumber}
                                         isRequired
                                         value={form.fileNumber}
                                         onChange={(v) => setForm((f) => ({ ...f, fileNumber: v }))}
@@ -393,10 +390,10 @@ export function VersionAWorklistPage() {
 
                                     <div className="sm:col-span-2">
                                         <TextArea
-                                            label="Notes"
+                                            label={w.notes}
                                             value={form.notes}
                                             onChange={(v) => setForm((f) => ({ ...f, notes: v }))}
-                                            placeholder="Optional notes…"
+                                            placeholder={w.notesPlaceholder}
                                             rows={4}
                                         />
                                     </div>
@@ -409,8 +406,8 @@ export function VersionAWorklistPage() {
                                             className="size-4"
                                         />
                                         <div className="min-w-0">
-                                            <div className="text-sm font-semibold text-primary">Consent already given</div>
-                                            <div className="text-sm text-tertiary">If unchecked, the patient starts in the Consent step.</div>
+                                            <div className="text-sm font-semibold text-primary">{w.consentCheckboxTitle}</div>
+                                            <div className="text-sm text-tertiary">{w.consentCheckboxHintAdd}</div>
                                         </div>
                                     </label>
                                 </div>
@@ -422,10 +419,10 @@ export function VersionAWorklistPage() {
                                             setAddPatientOpen(false);
                                         }}
                                     >
-                                        Add patient
+                                        {w.addPatientSubmit}
                                     </Button>
                                     <Button color="tertiary" onClick={() => setAddPatientOpen(false)}>
-                                        Cancel
+                                        {w.cancel}
                                     </Button>
                                 </div>
                             </div>
@@ -449,27 +446,25 @@ export function VersionAWorklistPage() {
                                     <div className="flex items-start justify-between gap-4 border-b border-secondary p-6">
                                         <div>
                                             <Heading slot="title" className="text-md font-semibold text-primary">
-                                                Edit patient
+                                                {w.editPatientTitle}
                                             </Heading>
-                                            <div className="mt-1 text-sm text-tertiary">
-                                                Update chart details. Workflow step is unchanged — use the board or card actions to move steps.
-                                            </div>
+                                            <div className="mt-1 text-sm text-tertiary">{w.editPatientSubtitle}</div>
                                         </div>
                                         <Button color="tertiary" size="sm" onClick={() => setEditingPatientId(null)}>
-                                            Close
+                                            {w.close}
                                         </Button>
                                     </div>
 
                                     <div className="grid gap-4 p-6 sm:grid-cols-2">
                                         <Input
-                                            label="Name"
+                                            label={w.name}
                                             isRequired
                                             value={editForm.name}
                                             onChange={(v) => setEditForm((f) => ({ ...f, name: v }))}
                                             placeholder="Jane Doe"
                                         />
                                         <Input
-                                            label="File number"
+                                            label={w.fileNumber}
                                             isRequired
                                             value={editForm.fileNumber}
                                             onChange={(v) => setEditForm((f) => ({ ...f, fileNumber: v }))}
@@ -497,10 +492,10 @@ export function VersionAWorklistPage() {
 
                                         <div className="sm:col-span-2">
                                             <TextArea
-                                                label="Notes"
-                                                value={editForm.notes}
-                                                onChange={(v) => setEditForm((f) => ({ ...f, notes: v }))}
-                                                placeholder="Optional notes…"
+                                            label={w.notes}
+                                            value={editForm.notes}
+                                            onChange={(v) => setEditForm((f) => ({ ...f, notes: v }))}
+                                            placeholder={w.notesPlaceholder}
                                                 rows={4}
                                             />
                                         </div>
@@ -513,16 +508,16 @@ export function VersionAWorklistPage() {
                                                 className="size-4"
                                             />
                                             <div className="min-w-0">
-                                                <div className="text-sm font-semibold text-primary">Consent already given</div>
-                                                <div className="text-sm text-tertiary">For chart accuracy only; does not move the card.</div>
+                                                <div className="text-sm font-semibold text-primary">{w.consentCheckboxTitle}</div>
+                                                <div className="text-sm text-tertiary">{w.consentCheckboxHintEdit}</div>
                                             </div>
                                         </label>
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-start gap-3 border-t border-secondary p-6">
-                                        <Button onClick={saveEditedPatient}>Save changes</Button>
+                                        <Button onClick={saveEditedPatient}>{w.saveChanges}</Button>
                                         <Button color="tertiary" onClick={() => setEditingPatientId(null)}>
-                                            Cancel
+                                            {w.cancel}
                                         </Button>
                                     </div>
                                 </div>

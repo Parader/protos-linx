@@ -3,16 +3,11 @@ import { useId } from "react";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Input, InputBase, TextField } from "@/components/base/input/input";
 import { Label } from "@/components/base/input/label";
-import {
-    CONSULTATION_REASON_SUGGESTIONS,
-    type FormPatientPriority,
-    type PreferredCommunication,
-} from "@/pages/version-b/version-b-shared";
+import { useVEDLocale } from "@/lib/ved-locale";
+import { type FormPatientPriority, type PreferredCommunication } from "@/pages/version-b/version-b-shared";
 import { cx } from "@/utils/cx";
 
 const FORM_PRIORITIES: FormPatientPriority[] = ["P4", "P5"];
-
-export { CONSULTATION_REASON_SUGGESTIONS };
 
 type ReasonInputProps = {
     value: string;
@@ -21,6 +16,8 @@ type ReasonInputProps = {
 
 /** Single-line reason with datalist suggestions as the user types. */
 export function PatientFormReasonInput({ value, onChange }: ReasonInputProps) {
+    const { strings } = useVEDLocale();
+    const f = strings.worklistAb.form;
     const listId = `consultation-reason-${useId().replace(/:/g, "")}`;
     return (
         <div className="sm:col-span-2">
@@ -28,14 +25,14 @@ export function PatientFormReasonInput({ value, onChange }: ReasonInputProps) {
                 {({ isRequired, isInvalid }) => (
                     <>
                         <Label isRequired={isRequired} isInvalid={isInvalid}>
-                            Reason for consultation
+                            {f.reasonLabel}
                         </Label>
-                        <InputBase list={listId} placeholder="Headache, fever, etc." />
+                        <InputBase list={listId} placeholder={f.reasonPlaceholder} />
                     </>
                 )}
             </TextField>
             <datalist id={listId}>
-                {CONSULTATION_REASON_SUGGESTIONS.map((r) => (
+                {strings.worklistAb.consultationReasons.map((r: string) => (
                     <option key={r} value={r} />
                 ))}
             </datalist>
@@ -61,15 +58,15 @@ export function PatientFormReachSection({
     onPhoneChange,
     onEmailChange,
 }: ReachProps) {
+    const { strings } = useVEDLocale();
+    const f = strings.worklistAb.form;
     const smsChannel = preferredCommunication === "sms";
     const emailChannel = preferredCommunication === "email";
 
     return (
         <div className="sm:col-span-2 rounded-xl border border-secondary bg-secondary_alt/50 p-4">
-            <Label className="text-sm font-semibold text-primary">Reach the patient</Label>
-            <p className="mt-1 text-xs leading-snug text-tertiary">
-                SMS or email only (no phone call). SMS uses the mobile number below.
-            </p>
+            <Label className="text-sm font-semibold text-primary">{f.reachTitle}</Label>
+            <p className="mt-1 text-xs leading-snug text-tertiary">{f.reachHint}</p>
 
             <div className="mt-3">
                 <ButtonGroup
@@ -82,8 +79,8 @@ export function PatientFormReachSection({
                         if (k === "sms" || k === "email") onPreferredChange(k);
                     }}
                 >
-                    <ButtonGroupItem id="sms">SMS</ButtonGroupItem>
-                    <ButtonGroupItem id="email">Email</ButtonGroupItem>
+                    <ButtonGroupItem id="sms">{f.sms}</ButtonGroupItem>
+                    <ButtonGroupItem id="email">{f.email}</ButtonGroupItem>
                 </ButtonGroup>
             </div>
 
@@ -94,7 +91,7 @@ export function PatientFormReachSection({
                         smsChannel && "bg-[#E9F2FF]/80 ring-2 ring-[#2684FF]/45",
                     )}
                 >
-                    <Input label="Mobile (SMS)" value={phone} onChange={onPhoneChange} placeholder="(555) 555-5555" />
+                    <Input label={f.mobileSms} value={phone} onChange={onPhoneChange} placeholder={f.mobilePlaceholder} />
                 </div>
                 <div
                     className={cx(
@@ -102,7 +99,7 @@ export function PatientFormReachSection({
                         emailChannel && "bg-[#E9F2FF]/80 ring-2 ring-[#2684FF]/45",
                     )}
                 >
-                    <Input label="Email" value={email} onChange={onEmailChange} placeholder="jane@example.com" />
+                    <Input label={f.emailLabel} value={email} onChange={onEmailChange} placeholder={f.emailPlaceholder} />
                 </div>
             </div>
         </div>
@@ -115,13 +112,15 @@ type PriorityProps = {
 };
 
 export function PatientFormPriorityBar({ priority, onChange }: PriorityProps) {
+    const { strings } = useVEDLocale();
+    const f = strings.worklistAb.form;
     const descriptions: Record<FormPatientPriority, string> = {
-        P4: "Higher priority (prioritize first)",
-        P5: "Routine (lowest urgency)",
+        P4: f.priorityP4,
+        P5: f.priorityP5,
     };
     return (
         <div className="sm:col-span-2">
-            <Label className="text-sm font-semibold text-primary">Priority</Label>
+            <Label className="text-sm font-semibold text-primary">{f.priority}</Label>
             <div className="mt-2">
                 <ButtonGroup
                     size="sm"

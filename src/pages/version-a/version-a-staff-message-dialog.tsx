@@ -3,8 +3,15 @@ import { Heading } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
-import { ALL_STAFF_MESSAGE_OPTIONS } from "@/pages/version-a/version-a-staff-messages";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
+
+type StaffTemplateOption = {
+    id: string;
+    title: string;
+    description: string;
+    body: string;
+};
 
 type Props = {
     isOpen: boolean;
@@ -16,6 +23,21 @@ type Props = {
 };
 
 export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waitingCount = 0, patientName, onSend }: Props) {
+    const { strings } = useVEDLocale();
+    const sd = strings.worklistAb.staffDialog;
+    const st = strings.worklistAb.staffTemplates;
+
+    const ALL_STAFF_MESSAGE_OPTIONS: StaffTemplateOption[] = useMemo(
+        () => [
+            { id: "queue_status", ...st.queue_status },
+            { id: "delay", ...st.delay },
+            { id: "return_er", ...st.return_er },
+            { id: "wrong_number", ...st.wrong_number },
+            { id: "custom", title: st.custom.title, description: st.custom.description, body: "" },
+        ],
+        [st],
+    );
+
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [draft, setDraft] = useState("");
     const [editorOpen, setEditorOpen] = useState(false);
@@ -30,19 +52,21 @@ export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waiting
 
     const selectedPreset = useMemo(
         () => (selectedId ? ALL_STAFF_MESSAGE_OPTIONS.find((t) => t.id === selectedId) ?? null : null),
-        [selectedId],
+        [selectedId, ALL_STAFF_MESSAGE_OPTIONS],
     );
 
     const isCustom = selectedId === "custom";
     const showReadOnlyPreview = selectedPreset && !isCustom && !editorOpen && draft.trim().length > 0;
 
-    const title = mode === "waiting" ? "Message to everyone in Waiting" : "Send message to patient";
+    const title = mode === "waiting" ? sd.titleWaiting : sd.titlePatient;
     const subtitle =
         mode === "waiting"
-            ? `${waitingCount} patient${waitingCount === 1 ? "" : "s"} in the Waiting lane will receive this (simulated).`
+            ? waitingCount === 1
+                ? sd.subtitleWaitingOne
+                : sd.subtitleWaitingMany(waitingCount)
             : patientName
-              ? `Message will be logged on ${patientName}’s chart (simulated).`
-              : "Message will be logged on this chart (simulated).";
+              ? sd.subtitlePatientNamed(patientName)
+              : sd.subtitlePatientGeneric;
 
     const handleSend = () => {
         const trimmed = draft.trim();
@@ -86,7 +110,7 @@ export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waiting
 
                             <div className="flex max-h-[min(60vh,28rem)] flex-col gap-4 overflow-y-auto p-6">
                                 <div>
-                                    <p className="mb-2 text-xs font-medium text-tertiary">Choose a message</p>
+                                    <p className="mb-2 text-xs font-medium text-tertiary">{sd.chooseMessage}</p>
                                     <ul className="flex flex-col gap-2">
                                         {ALL_STAFF_MESSAGE_OPTIONS.map((t) => (
                                             <li key={t.id}>
@@ -110,30 +134,26 @@ export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waiting
 
                                 {showReadOnlyPreview ? (
                                     <div className="rounded-lg border border-secondary bg-secondary_alt px-3 py-2.5">
-                                        <p className="text-xs font-medium text-tertiary">Message text (sent as-is)</p>
+                                        <p className="text-xs font-medium text-tertiary">{sd.messagePreviewLabel}</p>
                                         <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-primary">{draft}</p>
                                         <button
                                             type="button"
                                             className="mt-3 text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover"
                                             onClick={() => setEditorOpen(true)}
                                         >
-                                            Customize before sending
+                                            {sd.customizeBeforeSend}
                                         </button>
                                     </div>
                                 ) : null}
 
                                 {(editorOpen || isCustom) && selectedId ? (
                                     <TextArea
-                                        label={isCustom ? "Your message" : "Edit message"}
-                                        hint={
-                                            isCustom
-                                                ? "Compose the full text. Nothing is sent until you click Send."
-                                                : "Adjust the wording if needed; the template link is kept only if the text still matches the original."
-                                        }
+                                        label={isCustom ? sd.yourMessage : sd.editMessage}
+                                        hint={isCustom ? sd.hintCustom : sd.hintEdit}
                                         value={draft}
                                         onChange={setDraft}
                                         rows={isCustom ? 5 : 4}
-                                        placeholder={isCustom ? "Type your message…" : undefined}
+                                        placeholder={isCustom ? sd.placeholderCustom : undefined}
                                     />
                                 ) : null}
 
@@ -146,17 +166,17 @@ export function VersionAStaffMessageDialog({ isOpen, onOpenChange, mode, waiting
                                             setEditorOpen(false);
                                         }}
                                     >
-                                        Use original wording
+                                        {sd.useOriginal}
                                     </button>
                                 ) : null}
                             </div>
 
                             <div className="flex flex-wrap justify-start gap-3 border-t border-secondary p-6">
                                 <Button type="button" isDisabled={!canSend} onClick={handleSend}>
-                                    Send message
+                                    {sd.send}
                                 </Button>
                                 <Button color="tertiary" type="button" onClick={() => onOpenChange(false)}>
-                                    Cancel
+                                    {sd.cancel}
                                 </Button>
                             </div>
                         </div>

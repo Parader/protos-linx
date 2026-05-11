@@ -1,9 +1,11 @@
-import { BarChart01, Clipboard, DotsHorizontal, Globe01, HelpCircle, User01 } from "@untitledui/icons";
+import { BarChart01, Clipboard, DotsHorizontal, HelpCircle, User01 } from "@untitledui/icons";
 import { NavLink, useNavigate } from "react-router";
+import { VedSidebarLanguageSwitcher } from "@/components/ved-sidebar-language-switcher";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_AKINOX_LOGO } from "@/constants/brand-assets";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { signOutToAccessGate } from "@/lib/sign-out-to-gate";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
 
 const navItemClass =
@@ -14,6 +16,8 @@ const navItemActiveInnerClass = "flex h-10 items-center gap-3 rounded-md bg-whit
 
 export function VersionASidebar() {
     const navigate = useNavigate();
+    const { strings } = useVEDLocale();
+    const s = strings.common.sidebar.navAb;
 
     return (
         <aside className="hidden h-dvh w-[296px] shrink-0 flex-col border-r border-[#E2E5EB] bg-white shadow-[0px_1px_5px_0px_rgba(16,24,40,0.05),0px_1px_2px_0px_rgba(16,24,40,0.05)] lg:flex">
@@ -41,7 +45,7 @@ export function VersionASidebar() {
                                     aria-current={isActive ? "page" : undefined}
                                 >
                                     <Clipboard className="size-6 shrink-0 text-[#475467]" strokeWidth={1.75} aria-hidden />
-                                    <span className="text-base font-medium leading-6 text-[#475467]">Worklist</span>
+                                    <span className="text-base font-medium leading-6 text-[#475467]">{s.worklist}</span>
                                 </span>
                             )}
                         </NavLink>
@@ -55,7 +59,7 @@ export function VersionASidebar() {
                                     aria-current={isActive ? "page" : undefined}
                                 >
                                     <User01 className="size-6 shrink-0 text-[#475467]" strokeWidth={1.75} aria-hidden />
-                                    <span className="text-base font-medium leading-6 text-[#475467]">Simulate patient</span>
+                                    <span className="text-base font-medium leading-6 text-[#475467]">{s.simulatePatient}</span>
                                 </span>
                             )}
                         </NavLink>
@@ -64,26 +68,20 @@ export function VersionASidebar() {
                             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left outline-hidden transition-colors hover:bg-[#F9FAFB]"
                         >
                             <BarChart01 className="size-6 shrink-0 text-[#475467]" strokeWidth={1.75} aria-hidden />
-                            <span className="text-base font-medium leading-6 text-[#475467]">Reports and statistics</span>
+                            <span className="text-base font-medium leading-6 text-[#475467]">{s.reports}</span>
                         </button>
                     </nav>
                 </div>
 
                 <div className="flex flex-col gap-6 px-4 pb-3">
                     <div className="flex flex-col gap-1">
-                        <button
-                            type="button"
-                            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left outline-hidden transition-colors hover:bg-[#F9FAFB]"
-                        >
-                            <Globe01 className="size-6 shrink-0 text-[#475467]" strokeWidth={1.75} aria-hidden />
-                            <span className="text-base font-medium leading-6 text-[#475467]">Français</span>
-                        </button>
+                        <VedSidebarLanguageSwitcher />
                         <button
                             type="button"
                             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left outline-hidden transition-colors hover:bg-[#F9FAFB]"
                         >
                             <HelpCircle className="size-6 shrink-0 text-[#475467]" strokeWidth={1.75} aria-hidden />
-                            <span className="text-base font-medium leading-6 text-[#475467]">Help</span>
+                            <span className="text-base font-medium leading-6 text-[#475467]">{s.help}</span>
                         </button>
                     </div>
 
@@ -108,13 +106,13 @@ export function VersionASidebar() {
                                     color="tertiary"
                                     size="sm"
                                     iconLeading={DotsHorizontal}
-                                    aria-label="Account menu"
+                                    aria-label={s.accountMenu}
                                     className="size-9 shrink-0 rounded-lg p-0 text-[#475467] hover:bg-[#F9FAFB]"
                                 />
                                 <Dropdown.Popover>
                                     <Dropdown.Menu>
                                         <Dropdown.Section>
-                                            <Dropdown.Item label="Sign out" onAction={() => signOutToAccessGate(navigate)} />
+                                            <Dropdown.Item label={s.signOut} onAction={() => signOutToAccessGate(navigate)} />
                                         </Dropdown.Section>
                                     </Dropdown.Menu>
                                 </Dropdown.Popover>

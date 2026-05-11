@@ -6,6 +6,8 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { cx } from "@/utils/cx";
 import { formatNanpFromRaw } from "@/utils/na-phone-format";
+import type { VersionCdPagesCore } from "@/lib/ved-app-strings/version-cd-pages-core";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import type { VersionDNewPatientForm } from "@/pages/version-d/version-d-context";
 
@@ -22,7 +24,6 @@ type PriorityOption = {
     pill: string;
     pillBorder: string;
     pillText: string;
-    fr: string;
 };
 
 const PRIORITIES: PriorityOption[] = [
@@ -34,7 +35,6 @@ const PRIORITIES: PriorityOption[] = [
         pill: "bg-[#ECFDF3]",
         pillBorder: "border-[#D1FADF]",
         pillText: "text-[#027A48]",
-        fr: "La plus basse, l’évaluation peut être reportée.",
     },
     {
         id: "P4",
@@ -44,7 +44,6 @@ const PRIORITIES: PriorityOption[] = [
         pill: "bg-[#FFFAEB]",
         pillBorder: "border-[#FEF0C7]",
         pillText: "text-[#B54708]",
-        fr: "Moyenne, état stable mais doit être évalué rapidement.",
     },
     {
         id: "P3",
@@ -54,37 +53,57 @@ const PRIORITIES: PriorityOption[] = [
         pill: "bg-[#FFF1F3]",
         pillBorder: "border-[#FFE4E8]",
         pillText: "text-[#C01048]",
-        fr: "La plus élevée, doit être prise en charge dès que possible.",
     },
 ];
 
-function contactSummary(f: VersionDNewPatientForm) {
+function priorityHint(id: PriorityOption["id"], w: VersionCdPagesCore["wizard"]) {
+    if (id === "P3") return w.priorityP3Hint;
+    if (id === "P4") return w.priorityP4Hint;
+    return w.priorityP5Hint;
+}
+
+function contactSummary(f: VersionDNewPatientForm, dash: string) {
     const p = f.phone.trim();
     const e = f.email.trim();
     if (p && e) return `${p} · ${e}`;
     if (p) return p;
     if (e) return e;
-    return "—";
+    return dash;
 }
 
-function FrozenBlock({ form, currentStep }: { form: VersionDNewPatientForm; currentStep: number }) {
+function FrozenBlock({
+    form,
+    currentStep,
+    w,
+    dash,
+}: {
+    form: VersionDNewPatientForm;
+    currentStep: number;
+    w: VersionCdPagesCore["wizard"];
+    dash: string;
+}) {
     const rows: { label: string; value: string }[] = [];
     if (currentStep > 0) {
         const id = [form.firstName, form.lastName].map((s) => s.trim()).filter(Boolean).join(" ");
-        rows.push({ label: "Identité", value: id || "—" });
+        rows.push({ label: w.frozenIdentity, value: id || dash });
     }
-    if (currentStep > 1) rows.push({ label: "Nº dossier", value: form.fileNumber.trim() || "—" });
-    if (currentStep > 2) rows.push({ label: "Coordonnées", value: contactSummary(form) });
-    if (currentStep > 3) rows.push({ label: "Motif", value: form.reason.trim() || "—" });
-    if (currentStep > 4) rows.push({ label: "Priorité", value: form.priority });
-    if (currentStep > 5) rows.push({ label: "Notes", value: form.notes.trim() ? `${form.notes.trim().slice(0, 80)}${form.notes.trim().length > 80 ? "…" : ""}` : "—" });
-    if (currentStep > 6) rows.push({ label: "Consentement manuel", value: form.consentManagedManually ? "Oui" : "Non" });
+    if (currentStep > 1) rows.push({ label: w.frozenFile, value: form.fileNumber.trim() || dash });
+    if (currentStep > 2) rows.push({ label: w.frozenContact, value: contactSummary(form, dash) });
+    if (currentStep > 3) rows.push({ label: w.frozenReason, value: form.reason.trim() || dash });
+    if (currentStep > 4) rows.push({ label: w.frozenPriority, value: form.priority });
+    if (currentStep > 5)
+        rows.push({
+            label: w.frozenNotes,
+            value: form.notes.trim() ? `${form.notes.trim().slice(0, 80)}${form.notes.trim().length > 80 ? "…" : ""}` : dash,
+        });
+    if (currentStep > 6)
+        rows.push({ label: w.frozenManualConsent, value: form.consentManagedManually ? w.yes : w.no });
 
     if (rows.length === 0) return null;
 
     return (
         <div className="space-y-2 rounded-xl border border-[#E4E7EC] bg-[#FCFCFD] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#98A2B3]">Réponses précédentes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#98A2B3]">{w.previousAnswers}</p>
             <dl className="space-y-2.5">
                 {rows.map((r) => (
                     <div key={r.label} className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-2 text-sm">
@@ -98,6 +117,9 @@ function FrozenBlock({ form, currentStep }: { form: VersionDNewPatientForm; curr
 }
 
 export function VersionDAddPatientModalWizard() {
+    const { strings } = useVEDLocale();
+    const w = strings.versionD.pages.wizard;
+    const dash = strings.versionD.shared.dash;
     const { addPatientOpen, setAddPatientOpen, form, setForm, addPatient } = useVersionD();
     const [step, setStep] = useState(0);
     const [reasonTouched, setReasonTouched] = useState(false);
@@ -253,7 +275,7 @@ export function VersionDAddPatientModalWizard() {
                         <div className="w-full max-w-[960px] rounded-xl bg-[#F9FAFB] shadow-lg ring-1 ring-[#E2E5EB]">
                             <div className="flex items-start justify-between gap-4 border-b border-[#E4E7EC] p-5 sm:p-6">
                                 <div className="min-w-0">
-                                    <h2 className="text-xl font-semibold text-[#101828] sm:text-2xl">Nouveau patient</h2>
+                                    <h2 className="text-xl font-semibold text-[#101828] sm:text-2xl">{w.title}</h2>
                                     <div className="mt-3 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[#E4E7EC]">
                                         <div
                                             className="h-full rounded-full bg-[#0573D8] transition-[width] duration-300 ease-out"
@@ -266,7 +288,7 @@ export function VersionDAddPatientModalWizard() {
                                     color="tertiary"
                                     size="sm"
                                     iconLeading={XClose}
-                                    aria-label="Fermer"
+                                    aria-label={w.closeAria}
                                     excludeFromTabOrder
                                     className="size-10 shrink-0 rounded-lg p-0 text-[#667085] hover:bg-white"
                                     onClick={close}
@@ -274,7 +296,7 @@ export function VersionDAddPatientModalWizard() {
                             </div>
 
                             <div className="flex flex-col gap-6 p-5 sm:gap-8 sm:p-8">
-                                <FrozenBlock form={form} currentStep={step} />
+                                <FrozenBlock form={form} currentStep={step} w={w} dash={dash} />
 
                                 <form
                                         className="rounded-2xl border border-[#E4E7EC] bg-white p-5 shadow-sm sm:p-6"
@@ -283,24 +305,24 @@ export function VersionDAddPatientModalWizard() {
                                     >
                                         {step === 0 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 1 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Quel est le nom du patient ?</h3>
-                                                <p className="mt-2 text-sm text-[#667085]">Prénom et nom de famille — la touche Entrée passe du prénom au nom.</p>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(1, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step0Title}</h3>
+                                                <p className="mt-2 text-sm text-[#667085]">{w.step0Hint}</p>
                                                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                                                     <Input
-                                                        label="Prénom"
+                                                        label={w.firstName}
                                                         value={form.firstName}
                                                         onChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
                                                         onKeyDown={handleFirstNameEnter}
-                                                        placeholder="Ex. Marie"
+                                                        placeholder={w.firstNamePh}
                                                         autoFocus
                                                     />
                                                     <Input
                                                         ref={lastNameInputRef}
-                                                        label="Nom"
+                                                        label={w.lastName}
                                                         value={form.lastName}
                                                         onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
-                                                        placeholder="Ex. Tremblay"
+                                                        placeholder={w.lastNamePh}
                                                     />
                                                 </div>
                                             </>
@@ -308,14 +330,14 @@ export function VersionDAddPatientModalWizard() {
 
                                         {step === 1 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 2 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Quel est le numéro de dossier ?</h3>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(2, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step1Title}</h3>
                                                 <Input
                                                     className="mt-5"
-                                                    label="Numéro de dossier"
+                                                    label={w.fileNumber}
                                                     value={form.fileNumber}
                                                     onChange={(v) => setForm((f) => ({ ...f, fileNumber: v }))}
-                                                    placeholder="Ex. 444555666"
+                                                    placeholder={w.fileNumberPh}
                                                     autoFocus
                                                 />
                                             </>
@@ -323,44 +345,40 @@ export function VersionDAddPatientModalWizard() {
 
                                         {step === 2 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 3 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Comment rejoindre le patient ?</h3>
-                                                <p className="mt-2 text-sm leading-relaxed text-[#667085]">
-                                                    Au moins un moyen (SMS ou courriel) est nécessaire pour l’attente à distance.
-                                                </p>
-                                                <p className="mt-1 text-xs text-[#98A2B3]">
-                                                    Entrée dans le mobile : passe au courriel si les deux sont vides, sinon continue.
-                                                </p>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(3, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step2Title}</h3>
+                                                <p className="mt-2 text-sm leading-relaxed text-[#667085]">{w.step2Hint}</p>
+                                                <p className="mt-1 text-xs text-[#98A2B3]">{w.step2Subhint}</p>
                                                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                                                     <Input
-                                                        label="Mobile (SMS)"
+                                                        label={w.mobileSms}
                                                         isInvalid={showContactError}
                                                         value={form.phone}
                                                         onChange={(v) => setForm((f) => ({ ...f, phone: formatNanpFromRaw(v) }))}
                                                         onBlur={() => setContactTouched(true)}
                                                         onKeyDown={handlePhoneEnter}
-                                                        placeholder="(514) 555-0123"
+                                                        placeholder={w.mobilePh}
                                                         inputMode="tel"
                                                         autoComplete="tel"
                                                         autoFocus
                                                     />
                                                     <Input
                                                         ref={emailInputRef}
-                                                        label="Courriel"
+                                                        label={w.email}
                                                         isInvalid={showContactError}
                                                         value={form.email}
                                                         onChange={(v) => setForm((f) => ({ ...f, email: v }))}
                                                         onBlur={() => setContactTouched(true)}
-                                                        placeholder="courriel@exemple.com"
+                                                        placeholder={w.emailPh}
                                                     />
                                                 </div>
                                                 <div className="mt-4 flex flex-col gap-2">
-                                                    <div className="text-sm font-medium text-[#344054]">Langue de communication</div>
+                                                    <div className="text-sm font-medium text-[#344054]">{w.commLanguage}</div>
                                                     <div className="flex flex-wrap gap-3">
                                                         {(
                                                             [
-                                                                { id: "fr" as const, label: "Français" },
-                                                                { id: "en" as const, label: "Anglais" },
+                                                                { id: "fr" as const, label: w.langFr },
+                                                                { id: "en" as const, label: w.langEn },
                                                             ] as const
                                                         ).map((opt) => {
                                                             const selected = form.communicationLanguage === opt.id;
@@ -388,30 +406,28 @@ export function VersionDAddPatientModalWizard() {
                                                     </div>
                                                 </div>
                                                 {showContactError ? (
-                                                    <p className="mt-3 text-sm font-medium text-[#B42318]">
-                                                        Indiquez un mobile ou un courriel (au moins l’un des deux).
-                                                    </p>
+                                                    <p className="mt-3 text-sm font-medium text-[#B42318]">{w.contactError}</p>
                                                 ) : null}
                                             </>
                                         ) : null}
 
                                         {step === 3 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 4 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Motif de présentation à l’urgence</h3>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(4, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step3Title}</h3>
                                                 <Input
                                                     className="mt-5"
-                                                    label="Motif"
+                                                    label={w.reason}
                                                     isRequired
                                                     isInvalid={showReasonError}
-                                                    hint={showReasonError ? "Ce champ est obligatoire." : undefined}
+                                                    hint={showReasonError ? w.reasonRequired : undefined}
                                                     value={form.reason}
                                                     onChange={(v) => {
                                                         setForm((f) => ({ ...f, reason: v }));
                                                         if (v.trim()) setReasonTouched(false);
                                                     }}
                                                     onBlur={() => setReasonTouched(true)}
-                                                    placeholder="p. ex. céphalée, fièvre…"
+                                                    placeholder={w.reasonPh}
                                                     autoFocus
                                                 />
                                             </>
@@ -419,16 +435,14 @@ export function VersionDAddPatientModalWizard() {
 
                                         {step === 4 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 5 sur {QUESTION_STEP_COUNT}</p>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(5, QUESTION_STEP_COUNT)}</p>
                                                 <h3
                                                     id="version-d-priority-heading"
                                                     className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl"
                                                 >
-                                                    Quelle priorité clinique ?
+                                                    {w.step4Title}
                                                 </h3>
-                                                <p className="mt-2 text-xs text-[#98A2B3]">
-                                                    Flèches ← → ou ↑ ↓ : changer la priorité · Entrée : continuer.
-                                                </p>
+                                                <p className="mt-2 text-xs text-[#98A2B3]">{w.step4Hint}</p>
                                                 <div
                                                     ref={priorityGroupRef}
                                                     role="radiogroup"
@@ -463,7 +477,7 @@ export function VersionDAddPatientModalWizard() {
                                                                 >
                                                                     {opt.label}
                                                                 </span>
-                                                                <span className="mt-2 text-xs leading-snug text-[#667085]">{opt.fr}</span>
+                                                                <span className="mt-2 text-xs leading-snug text-[#667085]">{priorityHint(opt.id, w)}</span>
                                                                 <input
                                                                     type="radio"
                                                                     name="version-d-priority-wizard"
@@ -481,16 +495,16 @@ export function VersionDAddPatientModalWizard() {
 
                                         {step === 5 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 6 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Notes cliniques (optionnel)</h3>
-                                                <p className="mt-2 text-xs text-[#98A2B3]">Entrée : continuer · Maj+Entrée : saut de ligne</p>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(6, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step5Title}</h3>
+                                                <p className="mt-2 text-xs text-[#98A2B3]">{w.step5Hint}</p>
                                                 <TextArea
                                                     className="mt-5"
-                                                    label="Notes"
+                                                    label={w.notes}
                                                     textAreaRef={notesTextAreaRef}
                                                     value={form.notes}
                                                     onChange={(v) => setForm((f) => ({ ...f, notes: v }))}
-                                                    placeholder="Allergies, contexte, etc."
+                                                    placeholder={w.notesPh}
                                                     rows={4}
                                                 />
                                             </>
@@ -498,16 +512,10 @@ export function VersionDAddPatientModalWizard() {
 
                                         {step === 6 ? (
                                             <>
-                                                <p className="text-sm font-medium text-[#0573D8]">Question 7 sur {QUESTION_STEP_COUNT}</p>
-                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">Consentement déjà recueilli hors plateforme ?</h3>
-                                                <p className="mt-2 text-sm text-[#667085]">
-                                                    Si le consentement a été géré en personne ou par un autre canal, cochez la case. Sinon, une demande de
-                                                    consentement sera envoyée au patient.
-                                                </p>
-                                                <p className="mt-1 text-xs text-[#98A2B3]">
-                                                    Entrée avec le focus sur la case : cocher ou décocher. Soumission : bouton ci-dessous (ou Entrée si le
-                                                    focus est sur le bouton).
-                                                </p>
+                                                <p className="text-sm font-medium text-[#0573D8]">{w.questionN(7, QUESTION_STEP_COUNT)}</p>
+                                                <h3 className="mt-1 text-lg font-semibold text-[#101828] sm:text-xl">{w.step6Title}</h3>
+                                                <p className="mt-2 text-sm text-[#667085]">{w.step6Hint}</p>
+                                                <p className="mt-1 text-xs text-[#98A2B3]">{w.step6Subhint}</p>
                                                 <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#E4E7EC] bg-[#FAFBFC] p-4">
                                                     <input
                                                         ref={consentCheckboxRef}
@@ -516,7 +524,7 @@ export function VersionDAddPatientModalWizard() {
                                                         onChange={(e) => setForm((f) => ({ ...f, consentManagedManually: e.target.checked }))}
                                                         className="mt-1 size-4 rounded border-[#D0D5DD]"
                                                     />
-                                                    <span className="text-sm font-medium text-[#344054]">Le consentement a été géré manuellement.</span>
+                                                    <span className="text-sm font-medium text-[#344054]">{w.manualConsentLabel}</span>
                                                 </label>
                                             </>
                                         ) : null}
@@ -529,20 +537,20 @@ export function VersionDAddPatientModalWizard() {
                                                     className="bg-[#0573D8] text-white hover:bg-[#0460B8]"
                                                     iconTrailing={ArrowRight}
                                                 >
-                                                    Continuer
+                                                    {w.continue}
                                                 </Button>
                                             ) : (
                                                 <Button type="submit" size="md" className="bg-[#0573D8] text-white hover:bg-[#0460B8]">
-                                                    Ajouter à la file d’attente
+                                                    {w.submitQueue}
                                                 </Button>
                                             )}
                                             {step > 0 ? (
                                                 <Button type="button" color="secondary" size="md" iconLeading={ArrowLeft} onClick={goBack}>
-                                                    Retour
+                                                    {w.back}
                                                 </Button>
                                             ) : null}
                                             <Button type="button" color="tertiary" size="md" onClick={() => setAddPatientOpen(false)}>
-                                                Annuler
+                                                {w.cancel}
                                             </Button>
                                         </div>
                                 </form>

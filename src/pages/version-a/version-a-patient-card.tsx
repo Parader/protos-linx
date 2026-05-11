@@ -7,6 +7,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
 
 export type PatientStatus = "consent" | "waiting" | "calledBack" | "confirmed" | "completed";
@@ -41,14 +42,6 @@ export type Patient = {
 };
 
 const STATUS_ORDER: PatientStatus[] = ["waiting", "consent", "confirmed", "calledBack", "completed"];
-
-const STATUS_LABELS: Record<PatientStatus, string> = {
-    consent: "Consent",
-    waiting: "Waiting",
-    calledBack: "Called back",
-    confirmed: "Confirmed",
-    completed: "Completed",
-};
 
 /** Left border + light background tint per workflow step (Completed uses neutral grey). */
 const STATUS_CARD_THEME: Record<PatientStatus, { bar: string; surface: string }> = {
@@ -155,7 +148,7 @@ function formatColumnWait(enteredAt: number) {
     return { short: formatDurationMs(ms), minutesTotal };
 }
 
-function buildJourneyTooltipText(patient: Patient): string {
+function buildJourneyTooltipText(patient: Patient, statusLabels: Record<PatientStatus, string>): string {
     const h = ensureStatusHistory(patient);
     const now = Date.now();
     const lines: string[] = [];
@@ -163,7 +156,7 @@ function buildJourneyTooltipText(patient: Patient): string {
         const seg = h[i]!;
         const end = i + 1 < h.length ? h[i + 1]!.enteredAt : now;
         const ms = Math.max(0, end - seg.enteredAt);
-        lines.push(`${STATUS_LABELS[seg.status]} — ${formatDurationMs(ms)}`);
+        lines.push(`${statusLabels[seg.status]} — ${formatDurationMs(ms)}`);
     }
     return lines.join("\n");
 }
@@ -183,6 +176,9 @@ type PatientCardBodyProps = {
 };
 
 function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, className }: PatientCardBodyProps) {
+    const { strings } = useVEDLocale();
+    const pc = strings.worklistAb.patientCard;
+    const SL = strings.worklistAb.statusLabels;
     const [callBackConfirmOpen, setCallBackConfirmOpen] = useState(false);
 
     useEffect(() => {
@@ -195,7 +191,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
     const wait = formatColumnWait(columnEnteredAt);
     const theme = cardThemeForPatient(patient);
     const waitTone = waitTimeTone(wait.minutesTotal);
-    const journeyBreakdown = buildJourneyTooltipText(patient);
+    const journeyBreakdown = buildJourneyTooltipText(patient, SL);
     const phone = patient.phone?.trim() ?? "";
     const email = patient.email?.trim() ?? "";
 
@@ -207,11 +203,11 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
 
     const primaryAction =
         patient.status === "consent"
-            ? { label: "Patient gave consent" as const, next: "waiting" as const }
+            ? { label: pc.primaryPatientGaveConsent, next: "waiting" as const }
             : patient.status === "waiting"
-              ? { label: "Call back" as const, next: "calledBack" as const }
+              ? { label: pc.primaryCallBack, next: "calledBack" as const }
               : patient.status === "calledBack" || patient.status === "confirmed"
-                ? { label: "Arrived" as const, next: "completed" as const }
+                ? { label: pc.primaryArrived, next: "completed" as const }
                 : null;
 
     return (
@@ -231,19 +227,19 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
                     {patient.status === "completed" && patient.cancelled ? (
                         <Badge type="pill-color" color="error" size="md" className="text-sm font-semibold">
-                            Cancelled
+                            {pc.cancelled}
                         </Badge>
                     ) : null}
                     {patient.status === "consent" && (
                         <Badge type="pill-color" color="warning" size="md" className="text-xs font-semibold">
-                            Pending consent
+                            {pc.pendingConsent}
                         </Badge>
                     )}
                     <Badge type="pill-color" color="warning" size="md" className="text-sm font-semibold tabular-nums">
                         {patient.priority}
                     </Badge>
                     <Tooltip
-                        title={`In this column: ${wait.short}`}
+                        title={`${pc.inColumn}${wait.short}`}
                         description={
                             <span className="block max-w-xs whitespace-pre-line text-left font-medium leading-relaxed">
                                 {journeyBreakdown}
@@ -264,7 +260,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                     </Tooltip>
                     <div onPointerDown={stopDrag} className="-mr-0.5 shrink-0">
                     <Dropdown.Root>
-                        <Dropdown.DotsButton className="p-0.5 text-[#5E6C84]" aria-label="More options" />
+                        <Dropdown.DotsButton className="p-0.5 text-[#5E6C84]" aria-label={pc.moreOptions} />
                         <Dropdown.Popover className="w-48">
                             <Dropdown.Menu
                                 onAction={(key) => {
@@ -276,11 +272,11 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                 }}
                             >
                                 <Dropdown.Section>
-                                    <Dropdown.Item id="edit" label="Edit" />
+                                    <Dropdown.Item id="edit" label={pc.edit} />
                                     {onSendMessage ? (
                                         <Dropdown.Item
                                             id="message"
-                                            label="Send message"
+                                            label={pc.sendMessage}
                                             icon={MessageCircle01}
                                             selectionIndicator="none"
                                         />
@@ -289,12 +285,12 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                 <Dropdown.Separator />
                                 <Dropdown.Section>
                                     {STATUS_ORDER.map((s) => (
-                                        <Dropdown.Item key={s} id={`move:${s}`} label={`Move to ${STATUS_LABELS[s]}`} />
+                                        <Dropdown.Item key={s} id={`move:${s}`} label={pc.moveTo(SL[s])} />
                                     ))}
                                 </Dropdown.Section>
                                 <Dropdown.Separator />
                                 <Dropdown.Section>
-                                    <Dropdown.Item id="cancel" label="Cancel visit" />
+                                    <Dropdown.Item id="cancel" label={pc.cancelVisit} />
                                 </Dropdown.Section>
                             </Dropdown.Menu>
                         </Dropdown.Popover>
@@ -319,7 +315,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                 ) : null}
                 {lastStaffMessage ? (
                     <p className="line-clamp-2 border-l-2 border-[#2684FF]/45 pl-2 text-[11px] leading-snug text-[#5E6C84]">
-                        <span className="font-semibold text-[#172B4D]">Last message · </span>
+                        <span className="font-semibold text-[#172B4D]">{pc.lastMessagePrefix}</span>
                         {lastStaffMessage.body}
                     </p>
                 ) : null}
@@ -339,8 +335,8 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5" onPointerDown={stopDrag}>
                     <Tooltip
-                        title={phone ? phone : "No mobile on file"}
-                        description={phone ? "Voice calls are not available — SMS or email only." : undefined}
+                        title={phone ? phone : pc.noMobile}
+                        description={phone ? pc.smsVoiceNote : undefined}
                         placement="top"
                     >
                         <TooltipTrigger
@@ -348,13 +344,13 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                 "inline-flex rounded-md p-1.5 transition-colors outline-hidden",
                                 phone ? "text-[#5E6C84] hover:bg-[#EBECF0]" : "cursor-default text-[#B3B9C4]",
                             )}
-                            aria-label={phone ? `Mobile (SMS): ${phone}` : "No mobile on file"}
+                            aria-label={phone ? pc.mobileSmsAria(phone) : pc.noMobileAria}
                         >
                             <Phone01 className="size-3.5 shrink-0" aria-hidden />
                         </TooltipTrigger>
                     </Tooltip>
                     <Tooltip
-                        title={email ? email : "No email on file"}
+                        title={email ? email : pc.noEmail}
                         description={
                             email ? (
                                 <a
@@ -362,7 +358,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                     className="font-medium text-white underline underline-offset-2"
                                     onClick={stopDrag}
                                 >
-                                    Send email
+                                    {pc.sendEmail}
                                 </a>
                             ) : undefined
                         }
@@ -373,7 +369,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                 "inline-flex rounded-md p-1.5 transition-colors outline-hidden",
                                 email ? "text-[#5E6C84] hover:bg-[#EBECF0]" : "cursor-default text-[#B3B9C4]",
                             )}
-                            aria-label={email ? `Email: ${email}` : "No email on file"}
+                            aria-label={email ? pc.emailAria(email) : pc.noEmailAria}
                         >
                             <Mail01 className="size-3.5 shrink-0" aria-hidden />
                         </TooltipTrigger>
@@ -383,14 +379,17 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
 
             {patient.status === "calledBack" && (
                 <p className="mt-1.5 text-[10px] leading-relaxed text-[#5E6C84]">
-                    Patient can confirm return (simulated below). Then <span className="font-medium text-[#172B4D]">Arrived</span> completes the
-                    visit.
+                    {pc.calledBackBeforeArrived}
+                    <span className="font-medium text-[#172B4D]">{pc.calledBackArrivedWord}</span>
+                    {pc.calledBackAfterArrived}
                 </p>
             )}
 
             {patient.status === "confirmed" && (
                 <p className="mt-1.5 text-[10px] leading-relaxed text-[#5E6C84]">
-                    Patient confirmed return. Use <span className="font-medium text-[#172B4D]">Arrived</span> when they present.
+                    {pc.confirmedBeforeArrived}
+                    <span className="font-medium text-[#172B4D]">{pc.confirmedArrivedWord}</span>
+                    {pc.confirmedAfterArrived}
                 </p>
             )}
 
@@ -406,7 +405,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                                 setCallBackConfirmOpen(false);
                             }}
                         >
-                            Confirm call back
+                            {pc.confirmCallBack}
                         </Button>
                         <Button
                             color="secondary"
@@ -414,7 +413,7 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                             className="min-w-0 min-h-10 shrink-0 px-3 text-xs font-medium"
                             onClick={() => setCallBackConfirmOpen(false)}
                         >
-                            Cancel
+                            {strings.worklistAb.worklistPage.cancel}
                         </Button>
                     </div>
                 ) : primaryAction ? (
@@ -441,13 +440,13 @@ function PatientCardBody({ patient, onEdit, onMoveTo, onCancel, onSendMessage, c
                         onPointerDown={stopDrag}
                         onClick={onEdit}
                     >
-                        Edit
+                        {pc.edit}
                     </Button>
                 )}
 
                 {patient.status === "calledBack" && (
                     <Button color="tertiary" size="sm" className="w-full text-xs" onClick={() => onMoveTo("confirmed")}>
-                        Simulate patient confirmed return
+                        {pc.simulatePatientConfirmedReturn}
                     </Button>
                 )}
             </div>

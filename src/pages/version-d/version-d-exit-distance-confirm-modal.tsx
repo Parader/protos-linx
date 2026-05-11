@@ -1,6 +1,7 @@
 import { Heading } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { useVEDLocale } from "@/lib/ved-locale";
 
 export type ExitDistanceVariant = "refuse" | "withdraw" | "cancel_manual_waiting";
 
@@ -12,18 +13,13 @@ type Props = {
 };
 
 export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant, onConfirm }: Props) {
+    const { strings } = useVEDLocale();
+    const ex = strings.versionD.pages.exitDistance;
     const title =
-        variant === "refuse"
-            ? "Refuser le consentement"
-            : variant === "withdraw"
-              ? "Retirer le consentement"
-              : "Annuler le rendez-vous";
+        variant === "refuse" ? ex.refuseTitle : variant === "withdraw" ? ex.withdrawTitle : ex.cancelManualTitle;
     const confirmLabel =
-        variant === "refuse"
-            ? "Confirmer le refus"
-            : variant === "withdraw"
-              ? "Confirmer le retrait"
-              : "Confirmer l’annulation";
+        variant === "refuse" ? ex.refuseConfirm : variant === "withdraw" ? ex.withdrawConfirm : ex.cancelManualConfirm;
+    const body = variant === "refuse" ? ex.bodyRefuse : variant === "withdraw" ? ex.bodyWithdraw : ex.bodyCancelManual;
 
     return (
         <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -37,30 +33,9 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                 </Heading>
                             </div>
                             <div className="px-6 py-5">
-                                <p className="text-[15px] leading-relaxed text-[#475467]">
-                                    {variant === "refuse" ? (
-                                        <>
-                                            En refusant, vous n’êtes <strong>pas inscrit</strong> au service de rappel et de suivi à distance et vous
-                                            ne recevrez pas de messages liés à la file d’attente virtuelle.
-                                        </>
-                                    ) : variant === "withdraw" ? (
-                                        <>
-                                            Retirer votre consentement vous retire <strong>complètement</strong> du service de rappel et de suivi à
-                                            distance. Vous ne recevrez plus de messages liés à votre place dans la file d’attente virtuelle.
-                                        </>
-                                    ) : (
-                                        <>
-                                            En annulant, vous êtes <strong>retiré de la file d’attente à distance</strong> : vous ne recevrez plus de
-                                            messages de suivi liés à cette inscription. Pour toute évaluation ou soins, vous devrez vous présenter en
-                                            personne à l’urgence.
-                                        </>
-                                    )}
-                                </p>
+                                <p className="text-[15px] leading-relaxed text-[#475467]">{body}</p>
                                 {variant !== "cancel_manual_waiting" ? (
-                                    <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">
-                                        Pour toute évaluation ou suite à donner à votre situation, vous devrez{" "}
-                                        <strong>vous présenter en personne à l’urgence</strong>.
-                                    </p>
+                                    <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">{ex.footerInPerson}</p>
                                 ) : null}
                             </div>
                             <div className="flex flex-col gap-2 border-t border-[#EEF0F4] px-6 py-4 sm:flex-row sm:justify-start">
@@ -77,7 +52,7 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                     {confirmLabel}
                                 </Button>
                                 <Button color="tertiary" size="md" className="w-full sm:w-auto" onClick={close}>
-                                    Annuler
+                                    {ex.cancel}
                                 </Button>
                             </div>
                         </div>

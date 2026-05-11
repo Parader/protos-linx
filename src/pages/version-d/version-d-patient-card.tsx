@@ -9,6 +9,8 @@ import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx } from "@/utils/cx";
 import { useClipboard } from "@/hooks/use-clipboard";
+import type { VersionCdPagesFlows } from "@/lib/ved-app-strings/version-cd-pages-flows";
+import { useVEDLocale } from "@/lib/ved-locale";
 import type { BoardColumnId, Patient, PatientCompletionCause, PatientStatus } from "@/pages/version-d/version-d-shared";
 import { fullName, statusToColumn, statusWhenDroppedOnColumn } from "@/pages/version-d/version-d-shared";
 import { useVersionD } from "@/pages/version-d/version-d-context";
@@ -31,16 +33,18 @@ const cardLayoutTransition = {
     mass: 0.82,
 };
 
-function statusLabel(patient: Patient) {
+type PatientCardStrings = VersionCdPagesFlows["patientCardC"];
+
+function statusLabel(patient: Patient, pc: PatientCardStrings) {
     if (patient.status === "consentPending") {
         return {
-            label: "Consentement en attente",
+            label: pc.statusConsentPending,
             className: "border-[#FEF0C7] bg-[#FFFAEB] text-[#B54708]",
         };
     }
     if (patient.status === "arrived") {
         return {
-            label: "Retour confirmé",
+            label: pc.statusArrived,
             className: "border-[#D1FADF] bg-[#ECFDF3] text-[#027A48]",
         };
     }
@@ -48,19 +52,19 @@ function statusLabel(patient: Patient) {
         const cause: PatientCompletionCause = patient.completionCause ?? "no_show";
         if (cause === "consent_withdrawn") {
             return {
-                label: "Retrait du consentement",
+                label: pc.statusWithdrawn,
                 className: "border-[#FFE4E8] bg-[#FFF1F3] text-[#C01048]",
             };
         }
         if (cause === "consent_refused") {
             return {
-                label: "Refus du consentement",
+                label: pc.statusRefused,
                 className: "border-[#FEF0C7] bg-[#FFFAEB] text-[#B54708]",
             };
         }
         if (cause === "patient_cancelled_queue") {
             return {
-                label: "Requête annulée (patient)",
+                label: pc.statusPatientCancelled,
                 className: "border-[#E4E7EC] bg-[#F9FAFB] text-[#475467]",
             };
         }
@@ -68,12 +72,12 @@ function statusLabel(patient: Patient) {
             const r = patient.cancellationReason?.trim() ?? "";
             const short = r.length > 52 ? `${r.slice(0, 52)}…` : r;
             return {
-                label: short ? `Annulé : ${short}` : "Annulé (équipe)",
+                label: short ? pc.statusStaffCancelled(short) : pc.statusStaffCancelledEmpty,
                 className: "border-[#FFE4E8] bg-[#FFF1F3] text-[#C01048]",
             };
         }
         return {
-            label: "Annulé – absence",
+            label: pc.statusNoShow,
             className: "border-[#FFE4E8] bg-[#FFF1F3] text-[#C01048]",
         };
     }
@@ -104,12 +108,18 @@ function CopyableIcon({
     icon,
     value,
     copyId,
-    label,
+    unavailableTitle,
+    copiedLabel,
+    copiedDescription,
+    clickToCopy,
 }: {
     icon: React.ReactNode;
     value?: string;
     copyId: string;
-    label: string;
+    unavailableTitle: string;
+    copiedLabel: string;
+    copiedDescription: string;
+    clickToCopy: string;
 }) {
     const { copied, copy } = useClipboard();
     const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -121,16 +131,16 @@ function CopyableIcon({
     }, [hasValue]);
 
     const title = !hasValue ? (
-        `${label} indisponible`
+        unavailableTitle
     ) : isCopied ? (
         <span className="inline-flex items-center gap-1.5">
             <Check className="size-3.5 text-emerald-300" strokeWidth={2.5} aria-hidden />
-            Copié
+            {copiedLabel}
         </span>
     ) : (
         value!
     );
-    const description = !hasValue ? undefined : isCopied ? "La valeur a été copiée dans le presse-papiers." : "Cliquer pour copier.";
+    const description = !hasValue ? undefined : isCopied ? copiedDescription : clickToCopy;
 
     return (
         <Tooltip
@@ -164,7 +174,17 @@ function CopyableIcon({
     );
 }
 
-function CopyableFileNumber({ fileNumber, patientId }: { fileNumber: string; patientId: string }) {
+function CopyableFileNumber({
+    fileNumber,
+    patientId,
+    pc,
+    dash,
+}: {
+    fileNumber: string;
+    patientId: string;
+    pc: PatientCardStrings;
+    dash: string;
+}) {
     const { copied, copy } = useClipboard();
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const trimmed = fileNumber.trim();
@@ -177,16 +197,16 @@ function CopyableFileNumber({ fileNumber, patientId }: { fileNumber: string; pat
     }, [hasValue]);
 
     const title = !hasValue ? (
-        "Numéro de dossier indisponible"
+        pc.fileNumberUnavailable
     ) : isCopied ? (
         <span className="inline-flex items-center gap-1.5">
             <Check className="size-3.5 text-emerald-300" strokeWidth={2.5} aria-hidden />
-            Copié
+            {pc.copied}
         </span>
     ) : (
         trimmed
     );
-    const description = !hasValue ? undefined : isCopied ? "La valeur a été copiée dans le presse-papiers." : "Cliquer pour copier.";
+    const description = !hasValue ? undefined : isCopied ? pc.copiedDescription : pc.clickToCopy;
 
     return (
         <Tooltip
@@ -214,13 +234,16 @@ function CopyableFileNumber({ fileNumber, patientId }: { fileNumber: string; pat
                 }}
             >
                 <Folder className="size-4 shrink-0 text-[#667085]" strokeWidth={1.75} aria-hidden />
-                <span className="min-w-0 truncate font-medium">{hasValue ? trimmed : "—"}</span>
+                <span className="min-w-0 truncate font-medium">{hasValue ? trimmed : dash}</span>
             </TooltipTrigger>
         </Tooltip>
     );
 }
 
 export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
+    const { strings } = useVEDLocale();
+    const pc = strings.versionD.pages.patientCardC;
+    const dash = strings.versionD.shared.dash;
     const { setSelectedPatientId, notifyForStatusChange, setEditingPatientId, setCancelModalPatientId, openMoveToRecallModal } =
         useVersionD();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -242,7 +265,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
         if (!canCallBack) setRecallConfirmOpen(false);
     }, [canCallBack]);
 
-    const statusPill = statusLabel(patient);
+    const statusPill = statusLabel(patient, pc);
     const mins = useMemo(() => minutesSince(patient.createdAt), [patient.createdAt]);
     const tone = waitTone(mins);
     const showWaitTimer = patient.status !== "completed";
@@ -329,7 +352,8 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                             {showWaitTimer ? (
                                 <div className={cx("flex items-center gap-1 text-xs font-medium", tone.text)}>
                                     <Clock className={cx("size-3", tone.icon)} strokeWidth={2} aria-hidden />
-                                    {mins} min
+                                    {mins}
+                                    {pc.minSuffix}
                                 </div>
                             ) : null}
                             <div
@@ -342,33 +366,33 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                         color="tertiary"
                                         size="sm"
                                         iconLeading={DotsHorizontal}
-                                        aria-label="Actions sur la fiche"
+                                        aria-label={pc.actionsAria}
                                         className="size-9 rounded-lg p-0 text-[#667085] hover:bg-[#F2F4F7]"
                                     />
                                     <Dropdown.Popover className="w-[min(100vw-2rem,280px)]" offset={4}>
                                         <Dropdown.Menu selectionMode="none" onAction={(k) => onMenuAction(String(k))}>
                                             <Dropdown.Section>
-                                                <Dropdown.Item id="edit" label="Modifier" icon={Edit03} selectionIndicator="none" />
+                                                <Dropdown.Item id="edit" label={pc.edit} icon={Edit03} selectionIndicator="none" />
                                             </Dropdown.Section>
                                             {showMoveMenuSection ? (
                                                 <>
                                                     <Dropdown.Separator />
                                                     <Dropdown.Section>
                                                         <Dropdown.SectionHeader className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-quaternary">
-                                                            Déplacer vers
+                                                            {pc.moveToHeader}
                                                         </Dropdown.SectionHeader>
                                                         {showMoveMenuWaiting ? (
                                                             <Dropdown.Item
                                                                 id="move-waiting"
-                                                                label="En attente"
+                                                                label={pc.menuMoveWaitingShort}
                                                                 selectionIndicator="none"
                                                             />
                                                         ) : null}
                                                         {showMoveMenuRecall ? (
-                                                            <Dropdown.Item id="move-recall" label="Rappel" selectionIndicator="none" />
+                                                            <Dropdown.Item id="move-recall" label={pc.menuMoveRecallShort} selectionIndicator="none" />
                                                         ) : null}
                                                         {showMoveMenuCompleted ? (
-                                                            <Dropdown.Item id="move-completed" label="Terminé" selectionIndicator="none" />
+                                                            <Dropdown.Item id="move-completed" label={pc.menuMoveCompletedShort} selectionIndicator="none" />
                                                         ) : null}
                                                     </Dropdown.Section>
                                                 </>
@@ -377,7 +401,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                             <Dropdown.Section>
                                                 <Dropdown.Item
                                                     id="cancel"
-                                                    label="Annuler"
+                                                    label={pc.menuCancelShort}
                                                     icon={Trash02}
                                                     isDisabled={patient.status === "completed"}
                                                     selectionIndicator="none"
@@ -389,10 +413,10 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                             </div>
                         </div>
 
-                        <div className="mt-1 text-base text-[#101828]">{patient.reason || "—"}</div>
+                        <div className="mt-1 text-base text-[#101828]">{patient.reason || dash}</div>
 
                         <div className="mt-2 rounded-[5px] bg-[#FCFCFD] p-2 text-sm text-[#667085]">
-                            {patient.notes ? `“${patient.notes}”` : "“Tried resting, still persistent”"}
+                            {patient.notes ? `“${patient.notes}”` : pc.notesPlaceholder}
                         </div>
                     </div>
                 </div>
@@ -403,17 +427,23 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <CopyableFileNumber fileNumber={patient.fileNumber} patientId={patient.id} />
+                        <CopyableFileNumber fileNumber={patient.fileNumber} patientId={patient.id} pc={pc} dash={dash} />
                     </div>
                     <div className="flex items-center gap-2">
                         <CopyableIcon
-                            label="Téléphone"
+                            unavailableTitle={pc.lineUnavailablePhone}
+                            copiedLabel={pc.copied}
+                            copiedDescription={pc.copiedDescription}
+                            clickToCopy={pc.clickToCopy}
                             value={patient.phone}
                             copyId={`phone:${patient.id}`}
                             icon={<Phone01 className="size-5" strokeWidth={1.75} aria-hidden />}
                         />
                         <CopyableIcon
-                            label="Courriel"
+                            unavailableTitle={pc.lineUnavailableEmail}
+                            copiedLabel={pc.copied}
+                            copiedDescription={pc.copiedDescription}
+                            clickToCopy={pc.clickToCopy}
                             value={patient.email}
                             copyId={`email:${patient.id}`}
                             icon={<Mail01 className="size-5" strokeWidth={1.75} aria-hidden />}
@@ -449,7 +479,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                         setRecallConfirmOpen(false);
                                     }}
                                 >
-                                    Confirmer le rappel
+                                    {pc.confirmRecall}
                                 </Button>
                                 <Button
                                     color="secondary"
@@ -460,7 +490,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                         setRecallConfirmOpen(false);
                                     }}
                                 >
-                                    Annuler
+                                    {pc.cancel}
                                 </Button>
                             </div>
                         ) : (
@@ -473,7 +503,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                     setRecallConfirmOpen(true);
                                 }}
                             >
-                                Rappeler
+                                {pc.recall}
                             </Button>
                         )
                     ) : null}
@@ -489,7 +519,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                 notifyForStatusChange(patient.id, "waiting");
                             }}
                         >
-                            Consentement reçu
+                            {pc.consentReceived}
                         </Button>
                     ) : null}
 
@@ -503,7 +533,7 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
                                 onMoveTo("completed");
                             }}
                         >
-                            Arrivé
+                            {pc.arrived}
                         </Button>
                     ) : null}
                 </div>
@@ -513,13 +543,15 @@ export function VersionDPatientCard({ patient, onSelect, onMoveTo }: Props) {
 }
 
 export function VersionDPatientCardOverlay({ patient, title }: { patient: Patient; title: string }) {
+    const { strings } = useVEDLocale();
+    const dash = strings.versionD.shared.dash;
     return (
         <div className="rounded-lg border border-[#E2E5EB] bg-white px-[15px] py-3 shadow-[0px_8px_24px_rgba(16,24,40,0.12)]">
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 truncate text-lg font-medium text-[#1D2939]">{title}</div>
                 <PriorityPill p={patient.priority} />
             </div>
-            <div className="mt-1 text-base text-[#101828]">{patient.reason || "—"}</div>
+            <div className="mt-1 text-base text-[#101828]">{patient.reason || dash}</div>
         </div>
     );
 }

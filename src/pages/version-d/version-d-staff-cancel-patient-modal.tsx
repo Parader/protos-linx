@@ -3,6 +3,7 @@ import { Heading } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { TextArea } from "@/components/base/textarea/textarea";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName } from "@/pages/version-d/version-d-shared";
@@ -15,6 +16,8 @@ type Props = {
 type CancelReasonMode = "no_show" | "other";
 
 export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props) {
+    const { strings } = useVEDLocale();
+    const sc = strings.versionD.pages.staffCancelD;
     const { patients, staffCancelPatient } = useVersionD();
     const [mode, setMode] = useState<CancelReasonMode>("no_show");
     const [otherReason, setOtherReason] = useState("");
@@ -45,17 +48,19 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                         <div className="w-full max-w-lg rounded-xl bg-primary shadow-lg ring-1 ring-secondary_alt">
                             <div className="border-b border-secondary p-6">
                                 <Heading slot="title" className="text-md font-semibold text-primary">
-                                    Veuillez préciser la raison d’annulation
+                                    {sc.title}
                                 </Heading>
                                 {patient ? (
                                     <p className="mt-2 text-sm text-tertiary">
-                                        La demande de <strong className="text-secondary">{fullName(patient)}</strong> sera annulée.
+                                        {sc.introPrefix}
+                                        <strong className="text-secondary">{fullName(patient)}</strong>
+                                        {sc.introSuffix}
                                     </p>
                                 ) : null}
                             </div>
                             <div className="flex flex-col gap-5 p-6">
                                 <fieldset className="min-w-0">
-                                    <legend className="text-sm font-medium text-secondary">Raison d’annulation</legend>
+                                    <legend className="text-sm font-medium text-secondary">{sc.legend}</legend>
                                     <div className="mt-3 flex flex-col gap-3">
                                         <label
                                             className={cx(
@@ -75,7 +80,7 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                                     setOtherReasonError(false);
                                                 }}
                                             />
-                                            <span className="text-primary">Le patient ne s’est pas présenté</span>
+                                            <span className="text-primary">{sc.noShow}</span>
                                         </label>
                                         <label
                                             className={cx(
@@ -95,24 +100,24 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                                     setOtherReasonError(false);
                                                 }}
                                             />
-                                            <span className="text-primary">Autre</span>
+                                            <span className="text-primary">{sc.other}</span>
                                         </label>
                                     </div>
                                 </fieldset>
 
                                 {mode === "other" ? (
                                     <TextArea
-                                        label="Préciser la raison"
+                                        label={sc.otherDetailLabel}
                                         isRequired
                                         isInvalid={otherReasonError}
-                                        hint={otherReasonError ? "Veuillez préciser la raison." : undefined}
+                                        hint={otherReasonError ? sc.otherDetailHint : undefined}
                                         rows={3}
                                         value={otherReason}
                                         onChange={(v) => {
                                             setOtherReason(v);
                                             if (v.trim()) setOtherReasonError(false);
                                         }}
-                                        placeholder="Préciser la raison"
+                                        placeholder={sc.otherDetailPlaceholder}
                                     />
                                 ) : null}
 
@@ -136,10 +141,10 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                             close();
                                         }}
                                     >
-                                        Confirmer
+                                        {sc.confirm}
                                     </Button>
                                     <Button color="tertiary" size="md" onClick={close}>
-                                        Annuler
+                                        {sc.cancel}
                                     </Button>
                                 </div>
                             </div>

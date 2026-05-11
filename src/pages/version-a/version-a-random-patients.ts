@@ -1,5 +1,5 @@
 import type { Patient } from "@/pages/version-a/version-a-patient-card";
-import { CONSULTATION_REASON_SUGGESTIONS, type FormPatientPriority } from "@/pages/version-a/version-a-shared";
+import type { FormPatientPriority } from "@/pages/version-a/version-a-shared";
 
 const FIRST = [
     "Alex",
@@ -81,7 +81,7 @@ export type RandomPatientFormFields = {
 };
 
 /** Fills the “New patient” form with plausible random values (testing / demos). */
-export function randomPatientFormFields(): RandomPatientFormFields {
+export function randomPatientFormFields(consultationReasons: readonly string[]): RandomPatientFormFields {
     const first = pick(FIRST);
     const last = pick(LAST);
     const n = randInt(1, 9999);
@@ -95,7 +95,7 @@ export function randomPatientFormFields(): RandomPatientFormFields {
         phone,
         email,
         preferredCommunication: pick(COMMS),
-        reason: pick(CONSULTATION_REASON_SUGGESTIONS),
+        reason: pick(consultationReasons),
         priority: pick(PRIORITIES),
         notes: pick(NOTE_SNIPPETS),
         consentGiven: Math.random() > 0.55,
@@ -103,7 +103,7 @@ export function randomPatientFormFields(): RandomPatientFormFields {
 }
 
 /** Many patients with varied status/priority for load and UX testing. */
-export function generateRandomPatients(count: number): Patient[] {
+export function generateRandomPatients(count: number, consultationReasons: readonly string[]): Patient[] {
     const safeCount = Math.min(500, Math.max(0, Math.floor(count)));
     const out: Patient[] = [];
     const now = Date.now();
@@ -117,7 +117,7 @@ export function generateRandomPatients(count: number): Patient[] {
             phone: `(${randInt(200, 999)}) ${randInt(200, 999)}-${randInt(1000, 9999)}`,
             email: `${first.toLowerCase()}.${last.toLowerCase()}.${i}.${randInt(10, 99)}@example.com`,
             preferredCommunication: pick(COMMS),
-            reason: pick(CONSULTATION_REASON_SUGGESTIONS),
+            reason: pick(consultationReasons),
             priority: pick(PRIORITIES),
             notes: Math.random() > 0.35 ? pick(NOTE_SNIPPETS) : undefined,
             consentGiven: true,

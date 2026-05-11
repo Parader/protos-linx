@@ -12,6 +12,7 @@ import {
     User01,
 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
 
 type Step = {
@@ -35,14 +36,14 @@ function StepIllustrationShell({ className, children }: { className?: string; ch
     );
 }
 
-function IllustrationStep1() {
+function IllustrationStep1({ patientLabel }: { patientLabel: string }) {
     return (
         <StepIllustrationShell>
             <div className="flex items-end gap-3">
                 <div className="relative rounded-xl border border-[#D0D5DD] bg-white px-3 py-2 shadow-[0px_1px_2px_rgba(16,24,40,0.06)]">
                     <div className="flex items-center gap-2">
                         <User01 className="size-5 text-[#667085]" strokeWidth={1.75} />
-                        <span className="text-[11px] font-medium text-[#344054]">Patient</span>
+                        <span className="text-[11px] font-medium text-[#344054]">{patientLabel}</span>
                     </div>
                     <div className="absolute -right-2 -top-2 flex size-7 items-center justify-center rounded-full bg-[#0573D8] text-white shadow-md ring-2 ring-white">
                         <Plus className="size-4" strokeWidth={2} />
@@ -59,7 +60,7 @@ function IllustrationStep1() {
     );
 }
 
-function IllustrationStep2() {
+function IllustrationStep2({ remoteWaitingLabel }: { remoteWaitingLabel: string }) {
     return (
         <StepIllustrationShell>
             <div className="flex flex-col items-center gap-2">
@@ -69,7 +70,7 @@ function IllustrationStep2() {
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-[#5E6C84] ring-1 ring-[#E4E7EC]">
                     <Clock className="size-3.5 text-[#98A2B3]" strokeWidth={2} />
-                    Attente à distance
+                    {remoteWaitingLabel}
                 </div>
             </div>
         </StepIllustrationShell>
@@ -93,52 +94,54 @@ function IllustrationStep3() {
     );
 }
 
-const STEPS: Step[] = [
-    {
-        n: 1,
-        title: "Ajouter un patient",
-        body: "👉 Inscrivez un patient admissible et confirmez son consentement pour l’attente à distance.",
-        illustration: <IllustrationStep1 />,
-    },
-    {
-        n: 2,
-        title: "Attente à distance",
-        body: "👉 Le patient attend de chez lui en conservant sa place dans la file.",
-        illustration: <IllustrationStep2 />,
-    },
-    {
-        n: 3,
-        title: "Rappel du patient",
-        body: "👉 Lorsqu’il est temps de revenir, envoyez une invitation par SMS ou courriel : le patient confirme son retour depuis le message avant de se présenter.",
-        illustration: <IllustrationStep3 />,
-    },
-];
-
 type Props = {
     onAddPatient: () => void;
 };
 
 export function VersionCWorklistEmptyState({ onAddPatient }: Props) {
+    const { strings } = useVEDLocale();
+    const ew = strings.versionC.pages.emptyWorklist;
+    const steps: Step[] = [
+        {
+            n: 1,
+            title: ew.steps[0].title,
+            body: ew.steps[0].body,
+            illustration: <IllustrationStep1 patientLabel={ew.illustrationPatient} />,
+        },
+        {
+            n: 2,
+            title: ew.steps[1].title,
+            body: ew.steps[1].body,
+            illustration: <IllustrationStep2 remoteWaitingLabel={ew.illustrationRemoteBadge} />,
+        },
+        {
+            n: 3,
+            title: ew.steps[2].title,
+            body: ew.steps[2].body,
+            illustration: <IllustrationStep3 />,
+        },
+    ];
+
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">
             <div className="mx-auto flex w-full max-w-5xl flex-col px-6 py-10 sm:py-14">
                 <div className="text-center">
                     <div className="inline-flex items-center gap-2 rounded-full border border-[#D1E9FF] bg-[#EFF8FF] px-3 py-1 text-xs font-semibold text-[#082244]">
                         <Building07 className="size-3.5 text-[#0573D8]" strokeWidth={2} aria-hidden />
-                        Centre de rappel
+                        {ew.recallPill}
                     </div>
                     <h2 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-[#101828] sm:text-3xl">
-                        Bienvenue dans le Centre de rappel
+                        {ew.title}
                     </h2>
                     <p className="mx-auto mt-3 max-w-2xl text-pretty text-base leading-relaxed text-[#475467] sm:text-lg">
-                        Gérez l’attente des patients à distance et faites-les revenir au bon moment, sans surcharger l’urgence.
+                        {ew.subtitle}
                     </p>
                 </div>
 
                 <div className="mt-12 sm:mt-14">
-                    <p className="text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">Fonctionnement en 3 étapes</p>
+                    <p className="text-center text-xs font-semibold uppercase tracking-[0.12em] text-[#98A2B3]">{ew.stepsHeading}</p>
                     <div className="mt-8 grid gap-6 lg:grid-cols-3">
-                        {STEPS.map((step) => (
+                        {steps.map((step) => (
                             <article
                                 key={step.n}
                                 className="flex flex-col rounded-2xl border border-[#E4E7EC] bg-white p-6 shadow-[0px_1px_2px_rgba(16,24,40,0.05)]"
@@ -165,9 +168,9 @@ export function VersionCWorklistEmptyState({ onAddPatient }: Props) {
                         className="bg-[#0573D8] text-white shadow-[0px_1px_2px_rgba(16,24,40,0.05)] hover:bg-[#0460B8]"
                         onClick={onAddPatient}
                     >
-                        Ajouter un premier patient
+                        {ew.addFirstPatient}
                     </Button>
-                    <p className="max-w-md text-center text-sm text-[#667085]">Réservé aux patients admissibles à l’attente à distance.</p>
+                    <p className="max-w-md text-center text-sm text-[#667085]">{ew.addFirstHint}</p>
                 </div>
             </div>
         </div>

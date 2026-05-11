@@ -3,13 +3,11 @@ import { Heading } from "react-aria-components";
 import { Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { MESSAGE_TEMPLATE_ORDER } from "@/lib/ved-app-strings/version-cd-pages";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName } from "@/pages/version-d/version-d-shared";
-import {
-    staffMessageTemplateBody,
-    STAFF_MESSAGE_TEMPLATES,
-    type MessageTemplateId,
-} from "@/pages/version-d/version-d-staff-message-templates";
+import { staffMessageTemplateBody, type MessageTemplateId } from "@/pages/version-d/version-d-staff-message-templates";
 
 type Props = {
     patientId: string | null;
@@ -17,9 +15,12 @@ type Props = {
 };
 
 export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Props) {
+    const { strings, locale } = useVEDLocale();
     const { patients, sendStaffMessage } = useVersionD();
+    const msg = strings.versionD.pages.messagingSingle;
+    const templates = strings.versionD.pages.messageTemplates;
     const [messageTemplate, setMessageTemplate] = useState<MessageTemplateId>("abnormal_delays");
-    const [messageBody, setMessageBody] = useState(() => staffMessageTemplateBody("abnormal_delays"));
+    const [messageBody, setMessageBody] = useState(() => staffMessageTemplateBody(templates, "abnormal_delays"));
 
     const patient = patientId ? patients.find((p) => p.id === patientId) ?? null : null;
     const isOpen = Boolean(patientId && patient);
@@ -27,8 +28,8 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
     useEffect(() => {
         if (!isOpen) return;
         setMessageTemplate("abnormal_delays");
-        setMessageBody(staffMessageTemplateBody("abnormal_delays"));
-    }, [isOpen, patientId]);
+        setMessageBody(staffMessageTemplateBody(templates, "abnormal_delays"));
+    }, [isOpen, patientId, locale, templates]);
 
     return (
         <ModalOverlay
@@ -45,26 +46,27 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
                             <div className="flex items-start justify-between gap-4 border-b border-secondary p-6">
                                 <div>
                                     <Heading slot="title" className="text-md font-semibold text-primary">
-                                        Envoyer un message
+                                        {msg.title}
                                     </Heading>
                                     <div className="mt-1 text-sm text-tertiary">
                                         {patient ? (
                                             <>
-                                                À : <strong className="text-secondary">{fullName(patient)}</strong> — SMS et/ou courriel selon les
-                                                coordonnées du dossier.
+                                                {msg.toPrefix}
+                                                <strong className="text-secondary">{fullName(patient)}</strong>
+                                                {msg.toSuffix}
                                             </>
                                         ) : null}
                                     </div>
                                 </div>
                                 <Button color="tertiary" size="sm" onClick={close}>
-                                    Fermer
+                                    {msg.close}
                                 </Button>
                             </div>
 
                             <div className="flex flex-col gap-4 p-6 sm:p-8">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-medium text-primary" htmlFor="single-msg-template">
-                                        Modèle
+                                        {msg.templateLabel}
                                     </label>
                                     <select
                                         id="single-msg-template"
@@ -73,36 +75,36 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
                                         onChange={(e) => {
                                             const next = e.target.value as MessageTemplateId;
                                             setMessageTemplate(next);
-                                            if (next !== "custom") setMessageBody(staffMessageTemplateBody(next));
+                                            if (next !== "custom") setMessageBody(staffMessageTemplateBody(templates, next));
                                             else setMessageBody("");
                                         }}
                                     >
-                                        {STAFF_MESSAGE_TEMPLATES.filter((t) => t.id !== "custom").map((t) => (
-                                            <option key={t.id} value={t.id}>
-                                                {t.label}
+                                        {MESSAGE_TEMPLATE_ORDER.filter((id) => id !== "custom").map((id) => (
+                                            <option key={id} value={id}>
+                                                {templates[id].label}
                                             </option>
                                         ))}
-                                        <option value="custom">Personnalisé…</option>
+                                        <option value="custom">{msg.customOption}</option>
                                     </select>
                                 </div>
 
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-medium text-primary" htmlFor="single-msg-body">
-                                        Message
+                                        {msg.messageLabel}
                                     </label>
                                     <textarea
                                         id="single-msg-body"
                                         className="min-h-32 w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 text-sm text-primary shadow-xs outline-hidden sm:min-h-40"
                                         value={messageBody}
                                         onChange={(e) => setMessageBody(e.target.value)}
-                                        placeholder="Saisissez votre message…"
+                                        placeholder={msg.messagePlaceholder}
                                     />
                                 </div>
 
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2 text-xs text-tertiary">
                                         <Mail01 className="size-4 text-tertiary" strokeWidth={1.75} aria-hidden />
-                                        Un envoi par canal disponible (SMS et/ou courriel).
+                                        {msg.footerHint}
                                     </div>
                                     <div className="flex justify-start">
                                         <Button
@@ -119,7 +121,7 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
                                                 close();
                                             }}
                                         >
-                                            Envoyer
+                                            {msg.send}
                                         </Button>
                                     </div>
                                 </div>

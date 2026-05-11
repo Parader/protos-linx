@@ -1,6 +1,7 @@
 import { Heading } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { useVEDLocale } from "@/lib/ved-locale";
 
 export type ExitDistanceVariant = "refuse" | "withdraw";
 
@@ -12,8 +13,11 @@ type Props = {
 };
 
 export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant, onConfirm }: Props) {
-    const title = variant === "refuse" ? "Refuser le consentement" : "Retirer le consentement";
-    const confirmLabel = variant === "refuse" ? "Confirmer le refus" : "Confirmer le retrait";
+    const { strings } = useVEDLocale();
+    const ex = strings.versionC.pages.exitDistance;
+    const title = variant === "refuse" ? ex.refuseTitle : ex.withdrawTitle;
+    const confirmLabel = variant === "refuse" ? ex.refuseConfirm : ex.withdrawConfirm;
+    const body = variant === "refuse" ? ex.bodyRefuse : ex.bodyWithdraw;
 
     return (
         <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -27,23 +31,8 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                 </Heading>
                             </div>
                             <div className="px-6 py-5">
-                                <p className="text-[15px] leading-relaxed text-[#475467]">
-                                    {variant === "refuse" ? (
-                                        <>
-                                            En refusant, vous n’êtes <strong>pas inscrit</strong> au service de rappel et de suivi à distance et vous
-                                            ne recevrez pas de messages liés à la file d’attente virtuelle.
-                                        </>
-                                    ) : (
-                                        <>
-                                            Retirer votre consentement vous retire <strong>complètement</strong> du service de rappel et de suivi à
-                                            distance. Vous ne recevrez plus de messages liés à votre place dans la file d’attente virtuelle.
-                                        </>
-                                    )}
-                                </p>
-                                <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">
-                                    Pour toute évaluation ou suite à donner à votre situation, vous devrez{" "}
-                                    <strong>vous présenter en personne à l’urgence</strong>.
-                                </p>
+                                <p className="text-[15px] leading-relaxed text-[#475467]">{body}</p>
+                                <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">{ex.footerInPerson}</p>
                             </div>
                             <div className="flex flex-col gap-2 border-t border-[#EEF0F4] px-6 py-4 sm:flex-row sm:justify-start">
                                 <Button
@@ -59,7 +48,7 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                     {confirmLabel}
                                 </Button>
                                 <Button color="tertiary" size="md" className="w-full sm:w-auto" onClick={close}>
-                                    Annuler
+                                    {ex.cancel}
                                 </Button>
                             </div>
                         </div>

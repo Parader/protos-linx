@@ -3,12 +3,10 @@ import { Heading } from "react-aria-components";
 import { Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { MESSAGE_TEMPLATE_ORDER } from "@/lib/ved-app-strings/version-cd-pages";
+import { useVEDLocale } from "@/lib/ved-locale";
 import { useVersionD } from "@/pages/version-d/version-d-context";
-import {
-    staffMessageTemplateBody,
-    STAFF_MESSAGE_TEMPLATES,
-    type MessageTemplateId,
-} from "@/pages/version-d/version-d-staff-message-templates";
+import { staffMessageTemplateBody, type MessageTemplateId } from "@/pages/version-d/version-d-staff-message-templates";
 
 type MessageTarget = "all" | "waiting" | "recall" | "completed";
 
@@ -18,17 +16,20 @@ type Props = {
 };
 
 export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props) {
+    const { strings, locale } = useVEDLocale();
     const { patients, patientsByColumn, sendStaffMessage } = useVersionD();
+    const msg = strings.versionD.pages.messagingBulk;
+    const templates = strings.versionD.pages.messageTemplates;
     const [messageTarget, setMessageTarget] = useState<MessageTarget>("all");
     const [messageTemplate, setMessageTemplate] = useState<MessageTemplateId>("abnormal_delays");
-    const [messageBody, setMessageBody] = useState(() => staffMessageTemplateBody("abnormal_delays"));
+    const [messageBody, setMessageBody] = useState(() => staffMessageTemplateBody(templates, "abnormal_delays"));
 
     useEffect(() => {
         if (!isOpen) return;
         setMessageTarget("all");
         setMessageTemplate("abnormal_delays");
-        setMessageBody(staffMessageTemplateBody("abnormal_delays"));
-    }, [isOpen]);
+        setMessageBody(staffMessageTemplateBody(templates, "abnormal_delays"));
+    }, [isOpen, locale, templates]);
 
     return (
         <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -39,14 +40,12 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                             <div className="flex items-start justify-between gap-4 border-b border-secondary p-6">
                                 <div>
                                     <Heading slot="title" className="text-md font-semibold text-primary">
-                                        Envoyer un message
+                                        {msg.title}
                                     </Heading>
-                                    <div className="mt-1 text-sm text-tertiary">
-                                        Messagerie groupée (démo) : SMS et/ou courriel selon les coordonnées de chaque patient.
-                                    </div>
+                                    <div className="mt-1 text-sm text-tertiary">{msg.subtitle}</div>
                                 </div>
                                 <Button color="tertiary" size="sm" onClick={close}>
-                                    Fermer
+                                    {msg.close}
                                 </Button>
                             </div>
 
@@ -54,7 +53,7 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-primary" htmlFor="bulk-msg-target">
-                                            Cible
+                                            {msg.targetLabel}
                                         </label>
                                         <select
                                             id="bulk-msg-target"
@@ -62,16 +61,16 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                             value={messageTarget}
                                             onChange={(e) => setMessageTarget(e.target.value as MessageTarget)}
                                         >
-                                            <option value="all">Tous les patients</option>
-                                            <option value="waiting">Colonne Attente</option>
-                                            <option value="recall">Colonne Rappel</option>
-                                            <option value="completed">Colonne Terminé</option>
+                                            <option value="all">{msg.targetAll}</option>
+                                            <option value="waiting">{msg.targetWaiting}</option>
+                                            <option value="recall">{msg.targetRecall}</option>
+                                            <option value="completed">{msg.targetCompleted}</option>
                                         </select>
                                     </div>
 
                                     <div className="flex flex-col gap-2">
                                         <label className="text-sm font-medium text-primary" htmlFor="bulk-msg-template">
-                                            Modèle
+                                            {msg.templateLabel}
                                         </label>
                                         <select
                                             id="bulk-msg-template"
@@ -80,37 +79,37 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                             onChange={(e) => {
                                                 const next = e.target.value as MessageTemplateId;
                                                 setMessageTemplate(next);
-                                                if (next !== "custom") setMessageBody(staffMessageTemplateBody(next));
+                                                if (next !== "custom") setMessageBody(staffMessageTemplateBody(templates, next));
                                                 else setMessageBody("");
                                             }}
                                         >
-                                            {STAFF_MESSAGE_TEMPLATES.filter((t) => t.id !== "custom").map((t) => (
-                                                <option key={t.id} value={t.id}>
-                                                    {t.label}
+                                            {MESSAGE_TEMPLATE_ORDER.filter((id) => id !== "custom").map((id) => (
+                                                <option key={id} value={id}>
+                                                    {templates[id].label}
                                                 </option>
                                             ))}
-                                            <option value="custom">Personnalisé…</option>
+                                            <option value="custom">{msg.customOption}</option>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col gap-2">
                                     <label className="text-sm font-medium text-primary" htmlFor="bulk-msg-body">
-                                        Message
+                                        {msg.messageLabel}
                                     </label>
                                     <textarea
                                         id="bulk-msg-body"
                                         className="min-h-32 w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 text-sm text-primary shadow-xs outline-hidden sm:min-h-40"
                                         value={messageBody}
                                         onChange={(e) => setMessageBody(e.target.value)}
-                                        placeholder="Saisissez votre message…"
+                                        placeholder={msg.messagePlaceholder}
                                     />
                                 </div>
 
                                 <div className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2 text-xs text-tertiary">
                                         <Mail01 className="size-4 text-tertiary" strokeWidth={1.75} aria-hidden />
-                                        Un envoi par canal disponible (SMS et/ou courriel).
+                                        {msg.footerHint}
                                     </div>
                                     <div className="flex justify-start">
                                         <Button
@@ -136,7 +135,7 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                                 close();
                                             }}
                                         >
-                                            Envoyer
+                                            {msg.send}
                                         </Button>
                                     </div>
                                 </div>

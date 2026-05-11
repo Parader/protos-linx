@@ -28,6 +28,7 @@ import { VersionDPatientPovPage } from "@/pages/version-d/version-d-patient-pov-
 import { VersionDPatientConsentNextPage } from "@/pages/version-d/version-d-patient-consent-next-page";
 import { VersionDPatientConsentPage } from "@/pages/version-d/version-d-patient-consent-page";
 import { VersionDConfirmReturnPage } from "@/pages/version-d/version-d-confirm-return-page";
+import { VEDLocaleProvider } from "@/lib/ved-locale";
 import { RouteProvider } from "@/providers/router-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "@/styles/globals.css";
@@ -36,8 +37,9 @@ createRoot(document.getElementById("root")!).render(
     <StrictMode>
         <ThemeProvider defaultTheme="light">
             <BrowserRouter>
-                <RouteProvider>
-                    <Routes>
+                <VEDLocaleProvider>
+                    <RouteProvider>
+                        <Routes>
                         <Route path="/" element={<AccessGatePage />} />
                         <Route element={<ProtectedAppLayout />}>
                             <Route path="/hub" element={<HomeScreen />} />
@@ -70,8 +72,9 @@ createRoot(document.getElementById("root")!).render(
                             </Route>
                             <Route path="*" element={<NotFound />} />
                         </Route>
-                    </Routes>
-                </RouteProvider>
+                        </Routes>
+                    </RouteProvider>
+                </VEDLocaleProvider>
             </BrowserRouter>
         </ThemeProvider>
     </StrictMode>,

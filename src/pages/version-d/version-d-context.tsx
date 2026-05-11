@@ -7,6 +7,8 @@ import {
     type DragStartEvent,
 } from "@dnd-kit/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useVEDLocale } from "@/lib/ved-locale";
+import type { VersionCStringBundle } from "@/lib/ved-app-strings/version-c-bundle";
 import {
     comparePatientsByArrivalAsc,
     comparePatientsCompletedDesc,
@@ -15,7 +17,6 @@ import {
     fullName,
     movePatientToStatus,
     patientRequiresConsentAttestationForRecallMove,
-    patientStatusLabelFr,
     statusToColumn,
     statusWhenDroppedOnColumn,
     type ActivityLogEntry,
@@ -147,9 +148,9 @@ function confirmReturnAbsoluteUrl(patientId: string) {
     return `${window.location.origin}${confirmReturnPagePath(patientId)}`;
 }
 
-function buildSmsConsentInvite(patientId: string): { body: string; consentUrl: string } {
+function buildSmsConsentInvite(vc: VersionCStringBundle, patientId: string): { body: string; consentUrl: string } {
     const consentUrl = consentAbsoluteUrl(patientId);
-    const prefix = "Urgence — attente à distance: consentement requis. Ouvrez:";
+    const prefix = vc.notifications.smsConsentInvitePrefix;
     let body = `${prefix} ${consentUrl}`;
     if (body.length > 160) {
         const maxUrl = 160 - prefix.length - 1;
@@ -159,28 +160,16 @@ function buildSmsConsentInvite(patientId: string): { body: string; consentUrl: s
     return { body, consentUrl };
 }
 
-function buildEmailConsentInvite(p: Patient): { body: string; consentUrl: string } {
+function buildEmailConsentInvite(vc: VersionCStringBundle, p: Patient): { body: string; consentUrl: string } {
     const consentUrl = consentAbsoluteUrl(p.id);
     const name = fullName(p);
-    const body = [
-        `Bonjour ${name},`,
-        "",
-        "Vous avez été ajouté à la file d’attente de l’urgence avec suivi à distance. Vous devez finaliser votre consentement pour recevoir les messages liés à votre attente (p. ex. rappels).",
-        "",
-        "Avant de poursuivre, veuillez prendre connaissance du consentement éclairé et confirmer votre accord en ligne.",
-        "",
-        `Lien sécurisé : ${consentUrl}`,
-        "",
-        "Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.",
-        "",
-        "— Attente à distance — Urgence",
-    ].join("\n");
+    const body = vc.notifications.emailConsentInviteBody({ patientName: name, consentUrl });
     return { body, consentUrl };
 }
 
-function buildSmsManualConsentEnrollment(patientId: string): { body: string; consentUrl: string } {
+function buildSmsManualConsentEnrollment(vc: VersionCStringBundle, patientId: string): { body: string; consentUrl: string } {
     const consentUrl = consentAbsoluteUrl(patientId);
-    const prefix = "Urgence — attente à distance: inscription confirmée. Suivi ou annulation:";
+    const prefix = vc.notifications.smsManualConsentEnrollmentPrefix;
     let body = `${prefix} ${consentUrl}`;
     if (body.length > 160) {
         const maxUrl = 160 - prefix.length - 1;
@@ -190,34 +179,23 @@ function buildSmsManualConsentEnrollment(patientId: string): { body: string; con
     return { body, consentUrl };
 }
 
-function buildEmailManualConsentEnrollment(p: Patient): { body: string; consentUrl: string } {
+function buildEmailManualConsentEnrollment(vc: VersionCStringBundle, p: Patient): { body: string; consentUrl: string } {
     const consentUrl = consentAbsoluteUrl(p.id);
     const name = fullName(p);
-    const body = [
-        `Bonjour ${name},`,
-        "",
-        "Vous êtes inscrit au service d’attente à distance pour la file d’attente de l’urgence. Le consentement a été enregistré par l’équipe pour votre dossier.",
-        "",
-        "Conservez ce lien pour consulter les informations de suivi ou pour annuler votre inscription au besoin :",
-        "",
-        `Lien sécurisé : ${consentUrl}`,
-        "",
-        "Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.",
-        "",
-        "— Attente à distance — Urgence",
-    ].join("\n");
+    const body = vc.notifications.emailManualConsentEnrollmentBody({ patientName: name, consentUrl });
     return { body, consentUrl };
 }
 
 /** Confirmation d’inscription + lien (page consentement) lorsque le consentement est géré manuellement côté établissement. */
 function sendManualConsentEnrollmentNotifications(
+    vc: VersionCStringBundle,
     append: (patientId: string, entry: Omit<NotificationEntry, "id" | "sentAt"> & { sentAt?: number }) => void,
     patient: Patient,
 ) {
     if (!patient.consentManagedManually || patient.status !== "waiting") return;
 
     if (patient.phone?.trim()) {
-        const sms = buildSmsManualConsentEnrollment(patient.id);
+        const sms = buildSmsManualConsentEnrollment(vc, patient.id);
         append(patient.id, {
             direction: "outbound",
             channel: "sms",
@@ -226,7 +204,7 @@ function sendManualConsentEnrollmentNotifications(
         });
     }
     if (patient.email?.trim()) {
-        const email = buildEmailManualConsentEnrollment(patient);
+        const email = buildEmailManualConsentEnrollment(vc, patient);
         append(patient.id, {
             direction: "outbound",
             channel: "email",
@@ -237,6 +215,7 @@ function sendManualConsentEnrollmentNotifications(
 }
 
 function sendConsentInvites(
+    vc: VersionCStringBundle,
     append: (patientId: string, entry: Omit<NotificationEntry, "id" | "sentAt"> & { sentAt?: number }) => void,
     patient: Patient,
 ) {
@@ -244,7 +223,7 @@ function sendConsentInvites(
     if (patient.status !== "consentPending") return;
 
     if (patient.phone?.trim()) {
-        const sms = buildSmsConsentInvite(patient.id);
+        const sms = buildSmsConsentInvite(vc, patient.id);
         append(patient.id, {
             direction: "outbound",
             channel: "sms",
@@ -253,7 +232,7 @@ function sendConsentInvites(
         });
     }
     if (patient.email?.trim()) {
-        const email = buildEmailConsentInvite(patient);
+        const email = buildEmailConsentInvite(vc, patient);
         append(patient.id, {
             direction: "outbound",
             channel: "email",
@@ -264,6 +243,10 @@ function sendConsentInvites(
 }
 
 export function VersionDProvider({ children }: { children: ReactNode }) {
+    const { strings } = useVEDLocale();
+    const vc = strings.versionD;
+    const statusUiLabel = useCallback((s: PatientStatus) => vc.shared.patientStatus[s], [vc]);
+
     const [query, setQuery] = useState("");
     const [patients, setPatients] = useState<Patient[]>([]);
     const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
@@ -332,20 +315,20 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             }));
             const p = patientsRef.current.find((x) => x.id === patientId);
             const patientLabel = p ? `${fullName(p)} — ${p.fileNumber}` : patientId;
-            const chLabel = entry.channel === "sms" ? "SMS" : "Courriel";
+            const chLabel = entry.channel === "sms" ? vc.activity.channelSms : vc.activity.channelEmail;
             const isOut = entry.direction === "outbound";
             appendActivityLog({
                 at: built.sentAt,
                 kind: isOut ? "message_outbound" : "message_inbound",
                 patientId,
                 patientLabel,
-                summary: isOut ? `Message envoyé (${chLabel})` : `Message reçu (${chLabel})`,
+                summary: isOut ? vc.activity.messageOut(chLabel) : vc.activity.messageIn(chLabel),
                 detail: entry.body.length > 220 ? `${entry.body.slice(0, 220)}…` : entry.body,
                 channel: entry.channel,
                 direction: entry.direction,
             });
         },
-        [appendActivityLog],
+        [appendActivityLog, vc],
     );
 
     const sendStaffMessage = useCallback(
@@ -382,12 +365,12 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             if (next !== "recall") return;
 
             const confirmUrl = confirmReturnAbsoluteUrl(patientId);
-            const body = `Veuillez vous présenter à l’urgence. Confirmez votre retour depuis ce lien : ${confirmUrl}`;
+            const body = vc.notifications.recallPresentToErBody(confirmUrl);
             for (const ch of channels) {
                 sendStaffMessage(patientId, ch, body, { actionUrl: confirmUrl });
             }
         },
-        [patients, sendStaffMessage],
+        [patients, sendStaffMessage, vc],
     );
 
     const acceptConsent = useCallback(
@@ -398,12 +381,12 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 kind: "consent_accepted",
                 patientId,
                 patientLabel,
-                summary: "Consentement accepté",
-                detail: "Le patient passe en attente à distance.",
+                summary: vc.activity.consentAccepted,
+                detail: vc.activity.acceptConsentDetail,
             });
             setPatients((prev) => movePatientToStatus(prev, patientId, "waiting"));
         },
-        [appendActivityLog],
+        [appendActivityLog, vc],
     );
 
     const confirmReturn = useCallback(
@@ -414,12 +397,12 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 kind: "return_confirmed",
                 patientId,
                 patientLabel,
-                summary: "Retour confirmé",
-                detail: "Le patient a confirmé son retour depuis le message.",
+                summary: vc.activity.returnConfirmed,
+                detail: vc.activity.confirmReturnDetail,
             });
             setPatients((prev) => movePatientToStatus(prev, patientId, "arrived"));
         },
-        [appendActivityLog],
+        [appendActivityLog, vc],
     );
 
     const finalizeDistanceServiceExit = useCallback(
@@ -437,35 +420,34 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                     kind: "consent_refused",
                     patientId,
                     patientLabel,
-                    summary: "Consentement refusé",
-                    detail: "Dossier clôturé — service à distance retiré.",
+                    summary: vc.activity.consentRefused,
+                    detail: vc.activity.consentClosedRemoteDetail,
                 });
             } else if (completionCause === "consent_withdrawn") {
                 appendActivityLog({
                     kind: "consent_withdrawn",
                     patientId,
                     patientLabel,
-                    summary: "Retrait du consentement",
-                    detail: "Dossier clôturé — service à distance retiré.",
+                    summary: vc.activity.consentWithdrawn,
+                    detail: vc.activity.consentClosedRemoteDetail,
                 });
             } else {
                 appendActivityLog({
                     kind: "patient_left_queue_via_link",
                     patientId,
                     patientLabel,
-                    summary: "Annulation par le patient (lien public)",
-                    detail: "Annulation depuis la page de confirmation.",
+                    summary: vc.activity.patientLeftViaLink,
+                    detail: vc.activity.patientCancelFromConfirmDetail,
                 });
             }
             setPatients((prev) =>
                 movePatientToStatus(prev, patientId, "completed", { cancelled: true, completionCause }),
             );
-            const revokeMsg =
-                "Vous êtes retiré du service de rappel et de suivi à distance. Vous ne recevrez plus de messages. Pour toute suite, présentez-vous en personne à l’urgence.";
+            const revokeMsg = vc.notifications.revokeRemoteService;
             if (p.phone?.trim()) sendStaffMessage(patientId, "sms", revokeMsg);
             if (p.email?.trim()) sendStaffMessage(patientId, "email", revokeMsg);
         },
-        [appendActivityLog, setPatients, sendStaffMessage],
+        [appendActivityLog, setPatients, sendStaffMessage, vc],
     );
 
     const cancelQueueRequestFromPatient = useCallback(
@@ -540,8 +522,8 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                         kind: "status_drag",
                         patientId: draggedId,
                         patientLabel,
-                        summary: "Déplacement (glisser-déposer)",
-                        detail: `${patientStatusLabelFr(dragged.status)} → ${patientStatusLabelFr(next)}`,
+                        summary: vc.activity.dragMoveSummary,
+                        detail: vc.activity.dragMoveDetail(statusUiLabel(dragged.status), statusUiLabel(next)),
                     });
                 }
                 setPatients((prev) => movePatientToStatus(prev, draggedId, next));
@@ -567,15 +549,15 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                     kind: "status_drag",
                     patientId: draggedId,
                     patientLabel,
-                    summary: "Déplacement (glisser-déposer)",
-                    detail: `${patientStatusLabelFr(prevStatusB)} → ${patientStatusLabelFr(next)}`,
+                    summary: vc.activity.dragMoveSummary,
+                    detail: vc.activity.dragMoveDetail(statusUiLabel(prevStatusB), statusUiLabel(next)),
                 });
             }
             setPatients((prev) => movePatientToStatus(prev, draggedId, next));
             notifyForStatusChange(draggedId, next);
             setSelectedPatientId((cur) => cur ?? draggedId);
         },
-        [appendActivityLog, patients, notifyForStatusChange, openMoveToRecallModal],
+        [appendActivityLog, patients, notifyForStatusChange, openMoveToRecallModal, vc, statusUiLabel],
     );
 
     const [addPatientOpen, setAddPatientOpen] = useState(false);
@@ -608,16 +590,11 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         const safeCount = Math.min(200, Math.max(0, Math.floor(count)));
         if (safeCount === 0) return;
 
-        const FIRST = ["Alex", "Sam", "Jordan", "Taylor", "Riley", "Casey", "Morgan", "Quinn", "Avery", "Jamie"] as const;
-        const LAST = ["Nguyen", "Patel", "Chen", "Roy", "Tremblay", "Gagnon", "Bélanger", "Fortin", "Leblanc", "Morin"] as const;
-        const REASONS = ["Mal de tête", "Douleur thoracique", "Douleur abdominale", "Essoufflement", "Fièvre", "Étourdissement"] as const;
-        const NOTES = [
-            "Symptômes aggravés pendant la nuit.",
-            "Stable depuis la dernière visite.",
-            "Allergie à la pénicilline.",
-            "A essayé repos et hydratation, peu de soulagement.",
-            "",
-        ] as const;
+        const demo = vc.pages.demoPatientContent;
+        const FIRST = demo.firstNames;
+        const LAST = demo.lastNames;
+        const REASONS = demo.reasons;
+        const NOTES = demo.notes;
         const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.length)]!;
         const randInt = (min: number, max: number) => Math.floor(min + Math.random() * (max - min + 1));
 
@@ -628,7 +605,8 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             const n = randInt(1, 9999);
             const fileNumber = String((now + i + n) % 1_000_000_000).padStart(9, "0");
             let phone = Math.random() > 0.25 ? `(${randInt(200, 999)}) ${randInt(200, 999)}-${randInt(1000, 9999)}` : undefined;
-            let email = Math.random() > 0.25 ? `${first.toLowerCase()}.${last.toLowerCase()}.${n}@exemple.com` : undefined;
+            let email =
+                Math.random() > 0.25 ? `${first.toLowerCase()}.${last.toLowerCase()}.${n}@${demo.emailDomain}` : undefined;
             if (!phone?.trim() && !email?.trim()) {
                 phone = `(${randInt(200, 999)}) ${randInt(200, 999)}-${randInt(1000, 9999)}`;
             }
@@ -659,15 +637,15 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         appendActivityLog({
             kind: "demo_patients_added",
             patientId: null,
-            patientLabel: "—",
-            summary: `${safeCount} patient${safeCount > 1 ? "s" : ""} de démonstration ajouté${safeCount > 1 ? "s" : ""}`,
-            detail: "Ajout groupé depuis les paramètres de la liste.",
+            patientLabel: vc.shared.dash,
+            summary: vc.activity.demoPatientsAdded(safeCount),
+            detail: vc.activity.demoPatientsDetail,
         });
         for (const p of created) {
-            sendConsentInvites(appendNotification, p);
-            sendManualConsentEnrollmentNotifications(appendNotification, p);
+            sendConsentInvites(vc, appendNotification, p);
+            sendManualConsentEnrollmentNotifications(vc, appendNotification, p);
         }
-    }, [appendActivityLog, selectedPatientId, appendNotification]);
+    }, [appendActivityLog, selectedPatientId, appendNotification, vc]);
 
     const addPatient = useCallback(() => {
         const reason = form.reason.trim();
@@ -679,9 +657,9 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         const status = defaultStatusForNewPatient(form.consentManagedManually);
         const patient: Patient = {
             id,
-            firstName: form.firstName.trim() || "Jane",
-            lastName: form.lastName.trim() || "Doe",
-            fileNumber: form.fileNumber.trim() || "—",
+            firstName: form.firstName.trim() || vc.pages.wizard.fallbackFirstName,
+            lastName: form.lastName.trim() || vc.pages.wizard.fallbackLastName,
+            fileNumber: form.fileNumber.trim() || vc.shared.dash,
             phone: form.phone.trim() || undefined,
             email: form.email.trim() || undefined,
             communicationLanguage: form.communicationLanguage,
@@ -700,15 +678,15 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             kind: "patient_added",
             patientId: id,
             patientLabel: `${fullName(patient)} — ${patient.fileNumber}`,
-            summary: "Patient ajouté à la liste",
+            summary: vc.activity.patientAdded,
             detail: patient.reason,
         });
 
         // Seed initial notifications for the demo.
         if (status === "consentPending") {
-            sendConsentInvites(appendNotification, patient);
+            sendConsentInvites(vc, appendNotification, patient);
         } else {
-            sendManualConsentEnrollmentNotifications(appendNotification, patient);
+            sendManualConsentEnrollmentNotifications(vc, appendNotification, patient);
         }
 
         setForm({
@@ -723,7 +701,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             notes: "",
             consentManagedManually: false,
         });
-    }, [appendActivityLog, form, appendNotification]);
+    }, [appendActivityLog, form, appendNotification, vc]);
 
     const savePatientEdits = useCallback(() => {
         if (!editingPatientId) return;
@@ -761,7 +739,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         );
 
         if (becameManualWaiting && edited) {
-            sendManualConsentEnrollmentNotifications(appendNotification, {
+            sendManualConsentEnrollmentNotifications(vc, appendNotification, {
                 ...edited,
                 firstName: form.firstName.trim() || edited.firstName,
                 lastName: form.lastName.trim() || edited.lastName,
@@ -781,8 +759,11 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             kind: "patient_edited",
             patientId: editingPatientId,
             patientLabel: `${nextName} — ${form.fileNumber.trim() || "—"}`,
-            summary: "Fiche patient modifiée",
-            detail: prevLabel !== `${nextName} — ${form.fileNumber.trim() || "—"}` ? `Ancien libellé : ${prevLabel}` : undefined,
+            summary: vc.activity.patientEdited,
+            detail:
+                prevLabel !== `${nextName} — ${form.fileNumber.trim() || "—"}`
+                    ? vc.activity.patientEditedOldLabel(prevLabel)
+                    : undefined,
         });
         setEditingPatientId(null);
         setForm({
@@ -797,7 +778,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             notes: "",
             consentManagedManually: false,
         });
-    }, [appendActivityLog, appendNotification, editingPatientId, form]);
+    }, [appendActivityLog, appendNotification, editingPatientId, form, vc]);
 
     const staffCancelPatient = useCallback(
         (patientId: string, payload: { mode: "no_show" } | { mode: "other"; reason: string }) => {
@@ -809,8 +790,8 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                     kind: "staff_cancelled",
                     patientId,
                     patientLabel,
-                    summary: "Dossier terminé — absent",
-                    detail: "Le patient ne s’est pas présenté.",
+                    summary: vc.activity.staffNoShowSummary,
+                    detail: vc.activity.staffNoShowDetail,
                 });
                 setPatients((prev) =>
                     movePatientToStatus(prev, patientId, "completed", {
@@ -827,7 +808,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 kind: "staff_cancelled",
                 patientId,
                 patientLabel,
-                summary: "Dossier annulé par l’équipe",
+                summary: vc.activity.staffCancelled,
                 detail: trimmed,
             });
             setPatients((prev) =>
@@ -838,7 +819,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 }),
             );
         },
-        [appendActivityLog],
+        [appendActivityLog, vc],
     );
 
     const value: VersionDContextValue = {
@@ -921,8 +902,8 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                                 kind: "status_menu",
                                 patientId: id,
                                 patientLabel: `${fullName(p)} — ${p.fileNumber}`,
-                                summary: "Changement de statut",
-                                detail: `${patientStatusLabelFr(p.status)} → ${patientStatusLabelFr(targetStatus)}`,
+                                summary: vc.worklist.statusMenuSummary,
+                                detail: vc.worklist.statusMenuDetail(statusUiLabel(p.status), statusUiLabel(targetStatus)),
                             });
                         }
                         setPatients((prev) => movePatientToStatus(prev, id, targetStatus));

@@ -11,40 +11,10 @@ export function normalizeFormPriority(p: PatientPriority): FormPatientPriority {
     return p === "P4" || p === "P5" ? p : "P5";
 }
 
-/** Add patient “reason for consultation” suggestions (datalist + random demos). */
-export const CONSULTATION_REASON_SUGGESTIONS: readonly string[] = [
-    "Headache",
-    "Chest pain",
-    "Abdominal pain",
-    "Shortness of breath",
-    "Fever",
-    "Dizziness",
-    "Back pain",
-    "Sore throat",
-    "Cut / laceration",
-    "Anxiety / panic",
-    "Nausea",
-    "Rash",
-    "Follow-up",
-    "Medication refill",
-];
-
-export const STATUS_LABELS: Record<PatientStatus, string> = {
-    consent: "Consent",
-    waiting: "Waiting",
-    calledBack: "Called back",
-    confirmed: "Confirmed",
-    completed: "Completed",
-};
-
 /** Version B: three board columns; each column holds one combined list (statuses shown on cards). */
 export type BoardColumnId = "queue" | "prep" | "done";
 
-export const BOARD_COLUMN_META: { id: BoardColumnId; title: string; subtitle: string }[] = [
-    { id: "queue", title: "Queue", subtitle: "Waiting list & consent intake" },
-    { id: "prep", title: "Prep & callback", subtitle: "Return confirmed & active callback" },
-    { id: "done", title: "Completed", subtitle: "Closed visits" },
-];
+export const BOARD_COLUMN_ORDER: readonly BoardColumnId[] = ["queue", "prep", "done"];
 
 export function statusToColumn(status: PatientStatus): BoardColumnId {
     if (status === "waiting" || status === "consent") return "queue";
