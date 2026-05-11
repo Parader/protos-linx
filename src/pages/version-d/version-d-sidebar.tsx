@@ -1,8 +1,9 @@
 import { BarChart01, Clipboard, DotsHorizontal, Globe01, HelpCircle, User01 } from "@untitledui/icons";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_AKINOX_LOGO } from "@/constants/brand-assets";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { signOutToAccessGate } from "@/lib/sign-out-to-gate";
 import { cx } from "@/utils/cx";
 
 const navItemClass =
@@ -12,6 +13,8 @@ const navItemActiveClass =
 const navItemActiveInnerClass = "flex h-10 items-center gap-3 rounded-md bg-white px-3 py-2";
 
 export function VersionDSidebar() {
+    const navigate = useNavigate();
+
     return (
         <aside className="hidden h-dvh w-[296px] shrink-0 flex-col border-r border-[#E2E5EB] bg-white shadow-[0px_1px_5px_0px_rgba(16,24,40,0.05),0px_1px_2px_0px_rgba(16,24,40,0.05)] lg:flex">
             <div className="flex min-h-0 w-full flex-1 flex-col justify-between">
@@ -114,7 +117,7 @@ export function VersionDSidebar() {
                                 <Dropdown.Popover>
                                     <Dropdown.Menu>
                                         <Dropdown.Section>
-                                            <Dropdown.Item label="Sign out" onAction={() => {}} />
+                                            <Dropdown.Item label="Sign out" onAction={() => signOutToAccessGate(navigate)} />
                                         </Dropdown.Section>
                                     </Dropdown.Menu>
                                 </Dropdown.Popover>

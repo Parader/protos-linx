@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
+import { ProtectedAppLayout } from "@/layouts/protected-app-layout";
+import { AccessGatePage } from "@/pages/access-gate-page";
 import { HomeScreen } from "@/pages/home-screen";
 import { MockupTrajectoryCarePage } from "@/pages/mockup-trajectory-care-page";
 import { NotFound } from "@/pages/not-found";
@@ -36,35 +38,38 @@ createRoot(document.getElementById("root")!).render(
             <BrowserRouter>
                 <RouteProvider>
                     <Routes>
-                        <Route path="/" element={<HomeScreen />} />
-                        <Route path="/mockup/trajectory-care" element={<MockupTrajectoryCarePage />} />
-                        <Route path="/version-a" element={<VersionALayout />}>
-                            <Route index element={<VersionAWorklistPage />} />
-                            <Route path="patient-consent" element={<VersionAPatientConsentPage />} />
-                            <Route path="patient-consent/next" element={<VersionAPatientConsentNextPage />} />
+                        <Route path="/" element={<AccessGatePage />} />
+                        <Route element={<ProtectedAppLayout />}>
+                            <Route path="/hub" element={<HomeScreen />} />
+                            <Route path="/mockup/trajectory-care" element={<MockupTrajectoryCarePage />} />
+                            <Route path="/version-a" element={<VersionALayout />}>
+                                <Route index element={<VersionAWorklistPage />} />
+                                <Route path="patient-consent" element={<VersionAPatientConsentPage />} />
+                                <Route path="patient-consent/next" element={<VersionAPatientConsentNextPage />} />
+                            </Route>
+                            <Route path="/version-b" element={<VersionBLayout />}>
+                                <Route index element={<VersionBWorklistPage />} />
+                                <Route path="patient-consent" element={<VersionBPatientConsentPage />} />
+                                <Route path="patient-consent/next" element={<VersionBPatientConsentNextPage />} />
+                            </Route>
+                            <Route path="/version-c" element={<VersionCLayout />}>
+                                <Route index element={<VersionCWorklistPage />} />
+                                <Route path="reports" element={<VersionCReportsPage />} />
+                                <Route path="patient" element={<VersionCPatientPovPage />} />
+                                <Route path="patient-consent" element={<VersionCPatientConsentPage />} />
+                                <Route path="patient-consent/next" element={<VersionCPatientConsentNextPage />} />
+                                <Route path="confirm-return" element={<VersionCConfirmReturnPage />} />
+                            </Route>
+                            <Route path="/version-d" element={<VersionDLayout />}>
+                                <Route index element={<VersionDWorklistPage />} />
+                                <Route path="reports" element={<VersionDReportsPage />} />
+                                <Route path="patient" element={<VersionDPatientPovPage />} />
+                                <Route path="patient-consent" element={<VersionDPatientConsentPage />} />
+                                <Route path="patient-consent/next" element={<VersionDPatientConsentNextPage />} />
+                                <Route path="confirm-return" element={<VersionDConfirmReturnPage />} />
+                            </Route>
+                            <Route path="*" element={<NotFound />} />
                         </Route>
-                        <Route path="/version-b" element={<VersionBLayout />}>
-                            <Route index element={<VersionBWorklistPage />} />
-                            <Route path="patient-consent" element={<VersionBPatientConsentPage />} />
-                            <Route path="patient-consent/next" element={<VersionBPatientConsentNextPage />} />
-                        </Route>
-                        <Route path="/version-c" element={<VersionCLayout />}>
-                            <Route index element={<VersionCWorklistPage />} />
-                            <Route path="reports" element={<VersionCReportsPage />} />
-                            <Route path="patient" element={<VersionCPatientPovPage />} />
-                            <Route path="patient-consent" element={<VersionCPatientConsentPage />} />
-                            <Route path="patient-consent/next" element={<VersionCPatientConsentNextPage />} />
-                            <Route path="confirm-return" element={<VersionCConfirmReturnPage />} />
-                        </Route>
-                        <Route path="/version-d" element={<VersionDLayout />}>
-                            <Route index element={<VersionDWorklistPage />} />
-                            <Route path="reports" element={<VersionDReportsPage />} />
-                            <Route path="patient" element={<VersionDPatientPovPage />} />
-                            <Route path="patient-consent" element={<VersionDPatientConsentPage />} />
-                            <Route path="patient-consent/next" element={<VersionDPatientConsentNextPage />} />
-                            <Route path="confirm-return" element={<VersionDConfirmReturnPage />} />
-                        </Route>
-                        <Route path="*" element={<NotFound />} />
                     </Routes>
                 </RouteProvider>
             </BrowserRouter>
