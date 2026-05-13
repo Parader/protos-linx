@@ -203,8 +203,9 @@ export function VersionAWorklistPage() {
             ) : (
                 <motion.div
                     layoutScroll
-                    className="flex min-h-0 flex-1 justify-start overflow-y-auto overflow-x-auto px-4 py-4 lg:px-6 lg:py-5"
+                    className="flex min-h-0 flex-1 justify-start overflow-y-auto overflow-x-auto px-4 lg:px-6"
                 >
+                    <div className="py-4 lg:py-5">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCenter}
@@ -320,6 +321,7 @@ export function VersionAWorklistPage() {
                             ) : null}
                         </DragOverlay>
                     </DndContext>
+                    </div>
                 </motion.div>
             )}
 
