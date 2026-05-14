@@ -286,7 +286,7 @@ export function VersionDPatientPovPage() {
     const emailDisabled = !selected?.email?.trim();
 
     return (
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#F2F4F7]">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#F2F4F7]">
             <div className="shrink-0 border-b border-[#E2E5EB] bg-white px-6 py-5">
                 <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
                     <div className="min-w-0">
@@ -353,24 +353,26 @@ export function VersionDPatientPovPage() {
                 </div>
             </div>
 
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-6">
-                <div className="min-w-0 w-full">
+            <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-y-auto px-6 py-6">
+                <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
                     {tab === "sms" ? (
-                        <div className="mx-auto w-full max-w-[420px]">
-                            <div className="rounded-[44px] border border-[#101828]/15 bg-[#101828] p-3.5 shadow-[0px_24px_60px_rgba(16,24,40,0.35)]">
-                                <div className="rounded-[36px] bg-black px-1 pt-3 pb-2">
-                                    <div className="mx-auto h-5 w-28 rounded-full bg-black" aria-hidden />
-                                    <div className="mt-3 flex min-h-[620px] flex-col overflow-hidden rounded-[28px] bg-white">
-                                        <PhoneStatusBar locale={patientLang} />
+                        <div className="mx-auto flex min-h-0 w-full max-w-[420px] flex-1 flex-col">
+                            <div className="flex min-h-0 flex-1 flex-col rounded-[44px] border border-[#101828]/15 bg-[#101828] p-3.5 shadow-[0px_24px_60px_rgba(16,24,40,0.35)]">
+                                <div className="flex min-h-0 flex-1 flex-col rounded-[36px] bg-black px-1 pt-3 pb-2">
+                                    <div className="mx-auto h-5 w-28 shrink-0 rounded-full bg-black" aria-hidden />
+                                    <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] bg-white">
+                                        <div className="shrink-0">
+                                            <PhoneStatusBar locale={patientLang} />
+                                        </div>
 
-                                        <div className="flex items-center justify-center border-b border-black/[0.06] bg-[#F9F9F9] py-2.5">
+                                        <div className="flex shrink-0 items-center justify-center border-b border-black/[0.06] bg-[#F9F9F9] py-2.5">
                                             <div className="text-center">
                                                 <p className="text-[15px] font-semibold text-black">{patientPov.phoneHeaderTitle}</p>
                                                 <p className="text-[11px] text-[#8E8E93]">{patientPov.phoneHeaderSubtitle}</p>
                                             </div>
                                         </div>
 
-                                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#E5E5EA] px-2.5 py-3">
+                                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[#E5E5EA] px-2.5 py-3">
                                             {selected ? (
                                                 filtered.length > 0 ? (
                                                     filtered.map((e) => {
@@ -433,7 +435,9 @@ export function VersionDPatientPovPage() {
                                             )}
                                         </div>
 
-                                        <IosSmsComposerMock placeholder={patientPov.smsComposerPlaceholder} />
+                                        <div className="shrink-0">
+                                            <IosSmsComposerMock placeholder={patientPov.smsComposerPlaceholder} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
