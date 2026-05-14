@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
@@ -8,8 +8,11 @@ import {
     ExitDistanceServiceConfirmModal,
     type ExitDistanceVariant,
 } from "@/pages/version-d/version-d-exit-distance-confirm-modal";
+import { buildCanonicalPatientProcessUrl } from "@/pages/version-cd/patient-request-routing";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName } from "@/pages/version-d/version-d-shared";
+
+const PATIENT_PROCESS_BASE = "/version-d" as const;
 
 function formatExpiryDate(ts: number, locale: string, dateFallback: string) {
     try {
@@ -31,6 +34,7 @@ export function VersionDPatientConsentPage() {
 
     const { patients, acceptConsent, refuseConsent, withdrawConsent, cancelManualWaitingEnrollmentFromPatient } = useVersionD();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const [exitModal, setExitModal] = useState<ExitModalState>(null);
 
@@ -72,6 +76,15 @@ export function VersionDPatientConsentPage() {
     );
 
     const showWaitingQueueOnly = consentPatients.length === 0 && waitingQueuePatientFromLink !== null;
+
+    useEffect(() => {
+        const pid = searchParams.get("patientId");
+        if (!pid?.trim()) return;
+        const p = patients.find((x) => x.id === pid) ?? null;
+        const target = buildCanonicalPatientProcessUrl(PATIENT_PROCESS_BASE, pid, p);
+        const here = `${location.pathname}${location.search}`;
+        if (target !== here) navigate(target, { replace: true });
+    }, [searchParams, patients, navigate, location.pathname, location.search]);
 
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">

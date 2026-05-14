@@ -1,12 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { MarkerPin01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
+import { useVEDLocale } from "@/lib/ved-locale";
+import { buildCanonicalPatientProcessUrl } from "@/pages/version-cd/patient-request-routing";
 import { ExitDistanceServiceConfirmModal } from "@/pages/version-c/version-c-exit-distance-confirm-modal";
 import { useVersionC } from "@/pages/version-c/version-c-context";
 import type { Patient } from "@/pages/version-c/version-c-shared";
 import { fullName } from "@/pages/version-c/version-c-shared";
+
+const PATIENT_PROCESS_BASE = "/version-c" as const;
 
 /** Demo: same site as sidebar (Jewish General / CIUSSS West-Central Montreal). */
 const EMERGENCY_SITE = {
@@ -50,6 +54,9 @@ function PreferredContactDetail({ patient }: { patient: Patient }) {
 type LocationState = { patientId?: string };
 
 export function VersionCPatientConsentNextPage() {
+    const { strings } = useVEDLocale();
+    const nx = strings.versionC.pages.consentNext;
+
     const { patients, withdrawConsent } = useVersionC();
     const navigate = useNavigate();
     const location = useLocation();
@@ -62,6 +69,16 @@ export function VersionCPatientConsentNextPage() {
         () => (patientId ? patients.find((x) => x.id === patientId) ?? null : null),
         [patients, patientId],
     );
+
+    useEffect(() => {
+        if (!patientId?.trim()) return;
+        const p = patients.find((x) => x.id === patientId) ?? null;
+        if (!p) return;
+        if (p.status === "waiting") return;
+        const target = buildCanonicalPatientProcessUrl(PATIENT_PROCESS_BASE, patientId, p);
+        const here = `${location.pathname}${location.search}`;
+        if (target !== here) navigate(target, { replace: true });
+    }, [patientId, patients, location.pathname, location.search, navigate]);
 
     if (!patientId) {
         return <Navigate to="/version-c/patient-consent" replace />;
@@ -146,11 +163,9 @@ export function VersionCPatientConsentNextPage() {
                                     className="w-full sm:w-auto"
                                     onClick={() => setWithdrawModalOpen(true)}
                                 >
-                                    Retirer le consentement
+                                    {nx.withdraw}
                                 </Button>
-                                <p className="max-w-md text-center text-xs text-[#5E6C84]">
-                                    Vous quitterez le service de rappel à distance : il faudra vous présenter à l’urgence pour toute suite.
-                                </p>
+                                <p className="max-w-md text-center text-xs text-[#5E6C84]">{nx.withdrawHint}</p>
                             </div>
                         ) : null}
                     </div>

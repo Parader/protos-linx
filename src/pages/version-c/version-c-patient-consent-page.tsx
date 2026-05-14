@@ -1,46 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
-import { ExitDistanceServiceConfirmModal } from "@/pages/version-c/version-c-exit-distance-confirm-modal";
+import { useVEDLocale } from "@/lib/ved-locale";
+import { buildCanonicalPatientProcessUrl } from "@/pages/version-cd/patient-request-routing";
+import {
+    ExitDistanceServiceConfirmModal,
+    type ExitDistanceVariant,
+} from "@/pages/version-c/version-c-exit-distance-confirm-modal";
 import { useVersionC } from "@/pages/version-c/version-c-context";
 import { fullName } from "@/pages/version-c/version-c-shared";
 
-/** Consentement — attente à distance pour la file d’attente à l’urgence (prototype). */
-const CONSENT_BODY = (
-    <>
-        <p className="text-[15px] leading-relaxed text-[#172B4D]">
-            Vous êtes inscrit au service d’<strong>attente à distance</strong> pour la <strong>file d’attente de l’urgence</strong>. Il ne s’agit pas d’une consultation médicale à distance : ce service sert à gérer votre attente et les communications avec l’équipe (p. ex. rappels, coordonnées) jusqu’à votre prise en charge à l’urgence.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
-            Préalablement à toute poursuite, il vous appartient de <strong>prendre connaissance du consentement éclairé et d’y donner votre accord</strong>, lequel porte notamment sur la collecte, l’utilisation et la communication de vos renseignements personnels et de santé dans le cadre du présent service.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
-            En appuyant sur le bouton « J’accepte et je continue », vous attestez avoir pris connaissance des modalités qui vous sont présentées et{" "}
-            <strong>consentez à utiliser ce service d’attente à distance pour la file d’attente à l’urgence</strong>.
-        </p>
-        <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
-            Vous pouvez <strong>refuser</strong> le consentement avant de l’accepter. Après acceptation, vous pouvez à tout moment{" "}
-            <strong>retirer votre consentement</strong> en accédant de nouveau à <strong>cette même page</strong> au moyen du lien qui vous a été
-            communiqué.
-        </p>
-    </>
-);
+const PATIENT_PROCESS_BASE = "/version-c" as const;
 
-function formatExpiryDate(ts: number) {
+function formatExpiryDate(ts: number, locale: string, dateFallback: string) {
     try {
-        return new Intl.DateTimeFormat("fr-CA", { dateStyle: "long", timeStyle: "short" }).format(new Date(ts + 7 * 24 * 60 * 60 * 1000));
+        const tag = locale === "en" ? "en-CA" : "fr-CA";
+        return new Intl.DateTimeFormat(tag, { dateStyle: "long", timeStyle: "short" }).format(new Date(ts + 7 * 24 * 60 * 60 * 1000));
     } catch {
-        return "dans les 7 jours";
+        return dateFallback;
     }
 }
 
-type ExitModalState = { variant: "refuse" | "withdraw"; patientId: string } | null;
+type ExitModalState = { variant: ExitDistanceVariant; patientId: string } | null;
 
 export function VersionCPatientConsentPage() {
+    const { strings, locale } = useVEDLocale();
+    const pub = strings.versionC.pages.publicChrome;
+    const consentC = strings.versionC.pages.consentC;
+    const consentD = strings.versionC.pages.consentD;
+    const consentNext = strings.versionC.pages.consentNext;
+
     const { patients, acceptConsent, refuseConsent, withdrawConsent } = useVersionC();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const [exitModal, setExitModal] = useState<ExitModalState>(null);
 
@@ -83,20 +77,26 @@ export function VersionCPatientConsentPage() {
 
     const showWithdrawOnly = consentPatients.length === 0 && waitingWithdrawPatient !== null;
 
+    useEffect(() => {
+        const pid = searchParams.get("patientId");
+        if (!pid?.trim()) return;
+        const p = patients.find((x) => x.id === pid) ?? null;
+        const target = buildCanonicalPatientProcessUrl(PATIENT_PROCESS_BASE, pid, p);
+        const here = `${location.pathname}${location.search}`;
+        if (target !== here) navigate(target, { replace: true });
+    }, [searchParams, patients, navigate, location.pathname, location.search]);
+
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">
             <div className="mx-auto flex w-full max-w-[680px] flex-col px-4 py-8 pb-16">
                 <header className="mb-6 text-center">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#5E6C84]">Prototype — perspective usager</p>
-                    <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#172B4D]">Consentement éclairé</h1>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#5E6C84]">{pub.prototypeBadge}</p>
+                    <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#172B4D]">{consentD.pageHeading}</h1>
                 </header>
 
                 {consentPatients.length === 0 && !showWithdrawOnly ? (
                     <div className="rounded-2xl border border-[#E4E6EA] bg-white p-10 text-center shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
-                        <p className="text-[15px] leading-relaxed text-[#475467]">
-                            Aucun dossier n’est présentement <strong>en attente de consentement</strong> pour cette session. Si vous avez reçu un lien
-                            personnel, ouvrez-le pour accéder à votre formulaire.
-                        </p>
+                        <p className="text-[15px] leading-relaxed text-[#475467]">{consentC.emptyBody}</p>
                     </div>
                 ) : showWithdrawOnly && waitingWithdrawPatient ? (
                     <article className="overflow-hidden rounded-2xl border border-[#E4E6EA] bg-white shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
@@ -106,28 +106,23 @@ export function VersionCPatientConsentPage() {
                                     <div className="flex min-w-0 items-center gap-3">
                                         <img
                                             src={BRAND_QUEBEC_LOGO}
-                                            alt="Gouvernement du Québec"
+                                            alt={pub.govQuebecAlt}
                                             className="h-8 w-auto max-w-[min(100%,220px)] shrink-0 object-contain object-left sm:h-9"
                                         />
                                     </div>
                                     <div className="h-px w-full bg-[#E4E6EA] sm:hidden" aria-hidden />
                                     <div className="min-w-0 sm:pb-0.5">
-                                        <p className="text-lg font-semibold leading-snug text-[#082244]">Attente à distance — File d’attente à l’urgence</p>
+                                        <p className="text-lg font-semibold leading-snug text-[#082244]">{consentC.cardTitle}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="px-6 py-6 sm:px-8 sm:py-8">
                             <p className="text-[15px] leading-relaxed text-[#172B4D]">
-                                Bonjour, <strong>{fullName(waitingWithdrawPatient)}</strong>,
+                                {consentC.helloPrefix} <strong>{fullName(waitingWithdrawPatient)}</strong>,
                             </p>
-                            <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
-                                Votre consentement au service d’attente à distance a déjà été enregistré. Vous pouvez à tout moment{" "}
-                                <strong>retirer votre consentement</strong> depuis cette page.
-                            </p>
-                            <p className="mt-4 text-sm text-[#5E6C84]">
-                                Le retrait met fin au service de rappel et de suivi à distance : pour toute suite, présentez-vous en personne à l’urgence.
-                            </p>
+                            <p className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">{consentC.withdrawP1}</p>
+                            <p className="mt-4 text-sm text-[#5E6C84]">{consentC.withdrawP2}</p>
                             <div className="mt-8 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <Button
                                     color="secondary-destructive"
@@ -137,7 +132,7 @@ export function VersionCPatientConsentPage() {
                                         setExitModal({ variant: "withdraw", patientId: waitingWithdrawPatient.id })
                                     }
                                 >
-                                    Retirer le consentement
+                                    {consentC.withdrawButton}
                                 </Button>
                             </div>
                         </div>
@@ -145,7 +140,7 @@ export function VersionCPatientConsentPage() {
                             <Link to="/version-c" className="inline-flex justify-center">
                                 <img
                                     src={BRAND_POWERED_BY_AKINOX}
-                                    alt="Propulsé par Akinox"
+                                    alt={pub.poweredByAkinoxAlt}
                                     className="h-[34px] w-auto max-w-full object-contain"
                                 />
                             </Link>
@@ -159,13 +154,13 @@ export function VersionCPatientConsentPage() {
                                     <div className="flex min-w-0 items-center gap-3">
                                         <img
                                             src={BRAND_QUEBEC_LOGO}
-                                            alt="Gouvernement du Québec"
+                                            alt={pub.govQuebecAlt}
                                             className="h-8 w-auto max-w-[min(100%,220px)] shrink-0 object-contain object-left sm:h-9"
                                         />
                                     </div>
                                     <div className="h-px w-full bg-[#E4E6EA] sm:hidden" aria-hidden />
                                     <div className="min-w-0 sm:pb-0.5">
-                                        <p className="text-lg font-semibold leading-snug text-[#082244]">Attente à distance — File d’attente à l’urgence</p>
+                                        <p className="text-lg font-semibold leading-snug text-[#082244]">{consentC.cardTitle}</p>
                                     </div>
                                 </div>
                             </div>
@@ -175,7 +170,7 @@ export function VersionCPatientConsentPage() {
                             {consentPatients.length > 1 && (
                                 <div className="mb-6 max-w-md">
                                     <Select
-                                        label="Sélection du dossier (simulation)"
+                                        label={consentC.selectChartLabel}
                                         selectedKey={selectedId ?? undefined}
                                         onSelectionChange={(key) => setSelectedId(String(key))}
                                     >
@@ -192,22 +187,29 @@ export function VersionCPatientConsentPage() {
                                 <>
                                     <div className="space-y-4 border-b border-[#EEF0F4] pb-6">
                                         <p className="text-[15px] leading-relaxed text-[#172B4D]">
-                                            Bonjour, <strong>{fullName(selected)}</strong>,
+                                            {consentC.helloPrefix} <strong>{fullName(selected)}</strong>,
                                         </p>
-                                        {CONSENT_BODY}
+                                        {consentC.bodyParagraphs.map((para, i) => (
+                                            <p key={i} className="mt-4 text-[15px] leading-relaxed text-[#172B4D]">
+                                                {para}
+                                            </p>
+                                        ))}
                                     </div>
 
                                     <div className="mt-8 border-t border-[#EEF0F4] pt-6">
                                         <p className="text-sm italic leading-relaxed text-[#082244]">
-                                            Pour prendre connaissance de l’avis complet relatif à la confidentialité ainsi qu’aux droits qui vous sont reconnus, veuillez{" "}
+                                            {consentC.privacyBeforeLink}
                                             <a href="#" className="font-medium text-[#0573d8] underline underline-offset-2">
-                                                consulter le document afférent
+                                                {consentC.privacyLink}
                                             </a>
-                                            .
+                                            {consentC.privacyAfterLink}
                                         </p>
                                         <p className="mt-4 text-sm text-[#5E6C84]">
-                                            La validité du présent lien prend fin le <span className="font-medium text-[#172B4D]">{formatExpiryDate(selected.createdAt)}</span>{" "}
-                                            (délai indicatif aux fins de démonstration seulement).
+                                            {consentC.validityPrefix}
+                                            <span className="font-medium text-[#172B4D]">
+                                                {formatExpiryDate(selected.createdAt, locale, consentNext.dateFallback7d)}
+                                            </span>
+                                            {consentC.validitySuffix}
                                         </p>
                                     </div>
 
@@ -222,7 +224,7 @@ export function VersionCPatientConsentPage() {
                                                     navigate("/version-c/patient-consent/next", { state: { patientId } });
                                                 }}
                                             >
-                                                J’accepte et je continue
+                                                {consentC.accept}
                                             </Button>
                                             <Button
                                                 color="secondary-destructive"
@@ -230,12 +232,10 @@ export function VersionCPatientConsentPage() {
                                                 className="w-full sm:w-auto sm:min-w-[200px]"
                                                 onClick={() => setExitModal({ variant: "refuse", patientId: selected.id })}
                                             >
-                                                Je refuse
+                                                {consentC.refuse}
                                             </Button>
                                         </div>
-                                        <p className="text-center text-xs text-[#5E6C84] sm:text-left">
-                                            Une fois l’acceptation enregistrée, le dossier est classé en <strong>file d’attente</strong> côté établissement.
-                                        </p>
+                                        <p className="text-center text-xs text-[#5E6C84] sm:text-left">{consentC.footnoteAfterAccept}</p>
                                     </div>
                                 </>
                             ) : null}
@@ -245,7 +245,7 @@ export function VersionCPatientConsentPage() {
                             <Link to="/version-c" className="inline-flex justify-center">
                                 <img
                                     src={BRAND_POWERED_BY_AKINOX}
-                                    alt="Propulsé par Akinox"
+                                    alt={pub.poweredByAkinoxAlt}
                                     className="h-[34px] w-auto max-w-full object-contain"
                                 />
                             </Link>
@@ -263,7 +263,7 @@ export function VersionCPatientConsentPage() {
                 onConfirm={() => {
                     if (!exitModal) return;
                     if (exitModal.variant === "refuse") refuseConsent(exitModal.patientId);
-                    else withdrawConsent(exitModal.patientId);
+                    else if (exitModal.variant === "withdraw") withdrawConsent(exitModal.patientId);
                     setExitModal(null);
                     navigate("/version-c", { replace: true });
                 }}

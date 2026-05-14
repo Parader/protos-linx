@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
 import { useVEDLocale } from "@/lib/ved-locale";
+import { buildCanonicalPatientProcessUrl } from "@/pages/version-cd/patient-request-routing";
 import { ExitDistanceServiceConfirmModal } from "@/pages/version-d/version-d-exit-distance-confirm-modal";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName, type PatientStatus } from "@/pages/version-d/version-d-shared";
+
+const PATIENT_PROCESS_BASE = "/version-d" as const;
 
 type PageMode =
     | { kind: "ready"; status: "recall" | "arrived" }
@@ -26,10 +29,12 @@ function resolveMode(patientId: string, status: PatientStatus | null): PageMode 
 
 export function VersionDConfirmReturnPage() {
     const { strings } = useVEDLocale();
+    const location = useLocation();
     const pub = strings.versionD.pages.publicChrome;
     const cr = strings.versionD.pages.confirmReturn;
 
     const { patients, confirmReturn, cancelQueueRequestFromPatient } = useVersionD();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [finished, setFinished] = useState<"confirm" | "cancel" | null>(null);
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -66,6 +71,13 @@ export function VersionDConfirmReturnPage() {
         setFinished("cancel");
         setCancelModalOpen(false);
     };
+
+    useEffect(() => {
+        if (!patientId.trim()) return;
+        const target = buildCanonicalPatientProcessUrl(PATIENT_PROCESS_BASE, patientId, patient);
+        const here = `${location.pathname}${location.search}`;
+        if (target !== here) navigate(target, { replace: true });
+    }, [patientId, patient, navigate, location.pathname, location.search]);
 
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">

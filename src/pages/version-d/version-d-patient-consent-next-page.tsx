@@ -1,14 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { MarkerPin01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
 import { useVEDLocale } from "@/lib/ved-locale";
 import type { VersionCdPagesFlows } from "@/lib/ved-app-strings/version-cd-pages-flows";
+import { buildCanonicalPatientProcessUrl } from "@/pages/version-cd/patient-request-routing";
 import { ExitDistanceServiceConfirmModal } from "@/pages/version-d/version-d-exit-distance-confirm-modal";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import type { Patient } from "@/pages/version-d/version-d-shared";
 import { fullName } from "@/pages/version-d/version-d-shared";
+
+const PATIENT_PROCESS_BASE = "/version-d" as const;
 
 function preferredContactHeadline(p: Patient, nx: { headlineSmsEmail: string; headlineSms: string; headlineEmail: string }): string {
     const hasPhone = Boolean(p.phone?.trim());
@@ -56,6 +59,16 @@ export function VersionDPatientConsentNextPage() {
         () => (patientId ? patients.find((x) => x.id === patientId) ?? null : null),
         [patients, patientId],
     );
+
+    useEffect(() => {
+        if (!patientId?.trim()) return;
+        const p = patients.find((x) => x.id === patientId) ?? null;
+        if (!p) return;
+        if (p.status === "waiting") return;
+        const target = buildCanonicalPatientProcessUrl(PATIENT_PROCESS_BASE, patientId, p);
+        const here = `${location.pathname}${location.search}`;
+        if (target !== here) navigate(target, { replace: true });
+    }, [patientId, patients, location.pathname, location.search, navigate]);
 
     if (!patientId) {
         return <Navigate to="/version-d/patient-consent" replace />;

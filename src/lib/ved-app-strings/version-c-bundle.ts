@@ -118,7 +118,7 @@ const VC: Record<VEDLocale, VersionCStringBundle> = {
             consentAccepted: "Consentement accepté",
             returnConfirmed: "Retour confirmé",
             consentRefused: "Consentement refusé",
-            consentWithdrawn: "Retrait du consentement",
+            consentWithdrawn: "Quitté l’attente à distance",
             patientLeftViaLink: "Annulation par le patient (lien public)",
             dragMoveSummary: "Déplacement (glisser-déposer)",
             dragMoveDetail: (from, to) => `${from} → ${to}`,
@@ -157,7 +157,7 @@ const VC: Record<VEDLocale, VersionCStringBundle> = {
             recallPresentToErBody: (confirmUrl) =>
                 `Veuillez vous présenter à l’urgence. Confirmez votre retour depuis ce lien : ${confirmUrl}`,
             revokeRemoteService:
-                "Vous êtes retiré du service de rappel et de suivi à distance. Vous ne recevrez plus de messages. Pour toute suite, présentez-vous en personne à l’urgence.",
+                "Vous avez quitté l’attente à distance : vous ne recevrez plus de messages de rappel ou de suivi par ce canal. Pour toute suite, présentez-vous en personne à l’urgence.",
             smsManualConsentEnrollmentPrefix: "Urgence — attente à distance: inscription confirmée. Suivi ou annulation:",
             emailManualConsentEnrollmentBody: ({ patientName, consentUrl }) =>
                 [
@@ -219,7 +219,7 @@ const VC: Record<VEDLocale, VersionCStringBundle> = {
             consentAccepted: "Consent accepted",
             returnConfirmed: "Return confirmed",
             consentRefused: "Consent refused",
-            consentWithdrawn: "Consent withdrawn",
+            consentWithdrawn: "Left remote waiting",
             patientLeftViaLink: "Cancelled by patient (public link)",
             dragMoveSummary: "Move (drag and drop)",
             dragMoveDetail: (from, to) => `${from} → ${to}`,
@@ -258,7 +258,7 @@ const VC: Record<VEDLocale, VersionCStringBundle> = {
             recallPresentToErBody: (confirmUrl) =>
                 `Please come to the emergency department. Confirm your return using this link: ${confirmUrl}`,
             revokeRemoteService:
-                "You have been removed from recall and remote follow-up. You will not receive further messages. For next steps, please come to the emergency department in person.",
+                "You have left remote waiting: you will no longer receive recall or follow-up messages through this channel. For next steps, please come to the emergency department in person.",
             smsManualConsentEnrollmentPrefix: "ER — remote waiting: enrollment confirmed. Follow-up or cancel:",
             emailManualConsentEnrollmentBody: ({ patientName, consentUrl }) =>
                 [

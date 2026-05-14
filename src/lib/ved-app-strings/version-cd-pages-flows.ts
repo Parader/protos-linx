@@ -232,7 +232,7 @@ function activityKinds(locale: VEDLocale): VersionCdPagesFlows["reports"]["activ
         status_drag: t("Statut (glisser)", "Status (drag)"),
         consent_accepted: t("Consentement accepté", "Consent accepted"),
         consent_refused: t("Consentement refusé", "Consent refused"),
-        consent_withdrawn: t("Retrait consentement", "Consent withdrawn"),
+        consent_withdrawn: t("Quitter attente à distance", "Left remote waiting"),
         return_confirmed: t("Retour confirmé", "Return confirmed"),
         patient_left_queue_via_link: t("Annul. patient (lien)", "Patient cancel (link)"),
         staff_cancelled: t("Annul. équipe", "Staff cancelled"),
@@ -276,8 +276,8 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             "By clicking “I agree and continue”, you confirm you have read the terms presented and agree to use this remote waiting service for the emergency department queue.",
         ),
         t(
-            "Vous pouvez refuser le consentement avant de l’accepter. Après acceptation, vous pouvez à tout moment retirer votre consentement en accédant de nouveau à cette même page au moyen du lien qui vous a été communiqué.",
-            "You may refuse consent before accepting. After accepting, you may withdraw consent at any time by returning to this same page using the link you were given.",
+            "Vous pouvez annuler votre demande avant d’avoir accepté le consentement. Après acceptation, vous pouvez à tout moment annuler votre demande d’attente à distance en accédant de nouveau à cette même page au moyen du lien qui vous a été communiqué ; une fenêtre vous demandera de confirmer l’annulation.",
+            "You may cancel your request before accepting consent. After accepting, you may cancel your remote waiting request at any time by returning to this same page using the link you were given; a dialog will ask you to confirm cancellation.",
         ),
     ];
     const bodyD: [string, string, string, string] = [
@@ -294,8 +294,8 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             "By clicking “I agree”, you confirm you have read the terms presented and agree to use this remote waiting service for the emergency department queue.",
         ),
         t(
-            "Vous pouvez annuler votre demande d’inscription avant d’avoir accepté. Après acceptation, vous pourrez retirer votre consentement en accédant de nouveau à cette même page au moyen du lien qui vous a été communiqué.",
-            "You may cancel your enrollment request before accepting. After accepting, you may withdraw consent by returning to this same page using the link you were given.",
+            "Vous pouvez annuler votre demande d’inscription avant d’avoir accepté. Après acceptation, vous pourrez annuler votre demande d’attente à distance en accédant de nouveau à cette même page au moyen du lien qui vous a été communiqué ; une fenêtre vous demandera de confirmer l’annulation.",
+            "You may cancel your enrollment request before accepting. After accepting, you may cancel your remote waiting request by returning to this same page using the link you were given; a dialog will ask you to confirm cancellation.",
         ),
     ];
 
@@ -318,7 +318,7 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             validityPrefix: t("La validité du présent lien prend fin le ", "This link is valid until "),
             validitySuffix: t(" (délai indicatif aux fins de démonstration seulement).", " (demo timeline only)."),
             accept: t("J’accepte et je continue", "I agree and continue"),
-            refuse: t("Je refuse", "I refuse"),
+            refuse: t("Annuler votre demande", "Cancel your request"),
             footnoteAfterAccept: t(
                 "Une fois l’acceptation enregistrée, le dossier est classé en file d’attente côté établissement.",
                 "Once accepted, your chart is placed in the facility’s waiting queue.",
@@ -326,45 +326,45 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             withdrawOnlyTitle: t("Attente à distance — File d’attente à l’urgence", "Remote waiting — Emergency department queue"),
             withdrawHello: t("Bonjour,", "Hello,"),
             withdrawP1: t(
-                "Votre consentement au service d’attente à distance a déjà été enregistré. Vous pouvez à tout moment retirer votre consentement depuis cette page.",
-                "Your consent to remote waiting is already recorded. You may withdraw consent at any time from this page.",
+                "Vous êtes inscrit à l’attente à distance : votre consentement est déjà enregistré. Vous pouvez à tout moment annuler votre demande depuis cette page.",
+                "You are enrolled in remote waiting: your consent is already on record. You may cancel your request at any time from this page.",
             ),
             withdrawP2: t(
-                "Le retrait met fin au service de rappel et de suivi à distance : pour toute suite, présentez-vous en personne à l’urgence.",
-                "Withdrawal ends recall and remote follow-up: for next steps, present in person at the emergency department.",
+                "Une fenêtre vous demandera de confirmer l’annulation. Vous ne recevrez plus de messages de rappel ou de suivi par ce canal. Pour toute suite, présentez-vous en personne à l’urgence.",
+                "A dialog will ask you to confirm cancellation. You will no longer receive recall or follow-up messages through this channel. For next steps, present in person at the emergency department.",
             ),
-            withdrawButton: t("Retirer le consentement", "Withdraw consent"),
+            withdrawButton: t("Annuler votre demande", "Cancel your request"),
             waitingManualP1: t(
-                "Votre inscription au service d’attente à distance est confirmée. Le consentement a été enregistré par l’équipe pour votre dossier. Vous pouvez à tout moment annuler votre inscription (rendez-vous) depuis cette page.",
-                "Your remote waiting enrollment is confirmed. Consent was recorded by the team on your chart. You may cancel your enrollment at any time from this page.",
+                "Votre inscription au service d’attente à distance est confirmée. Le consentement a été enregistré par l’équipe pour votre dossier. Vous pouvez à tout moment annuler votre demande depuis cette page.",
+                "Your remote waiting enrollment is confirmed. Consent was recorded by the team on your chart. You may cancel your request at any time from this page.",
             ),
             waitingManualP2: t(
-                "L’annulation met fin au suivi à distance : pour toute urgence ou soins, présentez-vous en personne à l’urgence.",
-                "Cancellation ends remote follow-up: for any emergency or care, present in person at the emergency department.",
+                "Une fenêtre vous demandera de confirmer l’annulation. L’annulation met fin au suivi à distance : pour toute urgence ou soins, présentez-vous en personne à l’urgence.",
+                "A dialog will ask you to confirm cancellation. Cancellation ends remote follow-up: for any emergency or care, present in person at the emergency department.",
             ),
-            withdrawConsentButton: t("Retirer le consentement", "Withdraw consent"),
-            cancelAppointmentButton: t("Annuler le rendez-vous", "Cancel enrollment"),
+            withdrawConsentButton: t("Annuler votre demande", "Cancel your request"),
+            cancelAppointmentButton: t("Annuler votre demande", "Cancel your request"),
         },
         consentD: {
             pageHeading: t("Consentement éclairé", "Informed consent"),
-            refuseButton: t("Annuler le rendez-vous", "Cancel enrollment"),
+            refuseButton: t("Annuler votre demande", "Cancel your request"),
             bodyParagraphs: bodyD,
             accept: t("J’accepte", "I agree"),
             waitingQueueManualP1: t(
-                "Votre inscription au service d’attente à distance est confirmée. Le consentement a été enregistré par l’équipe pour votre dossier. Vous pouvez à tout moment annuler votre inscription (rendez-vous) depuis cette page.",
-                "Your remote waiting enrollment is confirmed. Consent was recorded by the team. You may cancel enrollment at any time from this page.",
+                "Votre inscription au service d’attente à distance est confirmée. Le consentement a été enregistré par l’équipe pour votre dossier. Vous pouvez à tout moment annuler votre demande depuis cette page.",
+                "Your remote waiting enrollment is confirmed. Consent was recorded by the team. You may cancel your request at any time from this page.",
             ),
             waitingQueueManualP2: t(
-                "L’annulation met fin au suivi à distance : pour toute urgence ou soins, présentez-vous en personne à l’urgence.",
-                "Cancellation ends remote follow-up: for emergencies or care, present in person at the emergency department.",
+                "Une fenêtre vous demandera de confirmer l’annulation. L’annulation met fin au suivi à distance : pour toute urgence ou soins, présentez-vous en personne à l’urgence.",
+                "A dialog will ask you to confirm cancellation. Cancellation ends remote follow-up: for emergencies or care, present in person at the emergency department.",
             ),
             waitingQueueNonManualP1: t(
-                "Votre consentement au service d’attente à distance a déjà été enregistré. Vous pouvez à tout moment retirer votre consentement depuis cette page.",
-                "Your remote waiting consent is already recorded. You may withdraw consent at any time from this page.",
+                "Vous êtes inscrit à l’attente à distance : votre consentement est déjà enregistré. Vous pouvez à tout moment annuler votre demande depuis cette page.",
+                "You are enrolled in remote waiting: your consent is already on record. You may cancel your request at any time from this page.",
             ),
             waitingQueueNonManualP2: t(
-                "Le retrait met fin au service de rappel et de suivi à distance : pour toute suite, présentez-vous en personne à l’urgence.",
-                "Withdrawal ends recall and remote follow-up: for next steps, present in person at the emergency department.",
+                "Une fenêtre vous demandera de confirmer l’annulation. Vous ne recevrez plus de messages de rappel ou de suivi par ce canal. Pour toute suite, présentez-vous en personne à l’urgence.",
+                "A dialog will ask you to confirm cancellation. You will no longer receive recall or follow-up messages through this channel. For next steps, present in person at the emergency department.",
             ),
         },
         consentNext: {
@@ -404,10 +404,10 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             headlineEmail: t("courriel", "email"),
             emergencySiteLabel: t("Urgence — Hôpital général juif", "Emergency — Jewish General Hospital"),
             emergencySiteLine: t("3750, ch. de la Côte-Sainte-Catherine, Montréal  H3T 1E2", "3750 Côte-Sainte-Catherine Rd, Montreal  H3T 1E2"),
-            withdraw: t("Retirer le consentement", "Withdraw consent"),
+            withdraw: t("Annuler votre demande", "Cancel your request"),
             withdrawHint: t(
-                "Vous quitterez le service de rappel à distance : il faudra vous présenter à l’urgence pour toute suite.",
-                "You will leave remote recall follow-up: you must go to the emergency department for next steps.",
+                "Une fenêtre s’ouvrira pour confirmer l’annulation. Pour toute urgence ou soins, présentez-vous à l’urgence.",
+                "A dialog will open to confirm cancellation. For emergencies or care, go to the emergency department.",
             ),
             dateFallback7d: t("dans les 7 jours", "within 7 days"),
         },
@@ -447,15 +447,15 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
                     `Hello ${patientName}, the team asks you to come to the emergency department. Staff see your queue status when you confirm.`,
                 ),
             readyBodyRecallExtra: t(
-                "Si vous ne souhaitez plus être suivi à distance ou ne pouvez pas revenir pour l’instant, vous pouvez annuler complètement votre inscription.",
-                "If you no longer want remote follow-up or cannot return for now, you can fully cancel your enrollment.",
+                "Si vous ne souhaitez plus être suivi à distance ou ne pouvez pas revenir pour l’instant, vous pouvez annuler votre demande ci-dessous.",
+                "If you no longer want remote follow-up or cannot return for now, you can cancel your request below.",
             ),
             readyBodyArrivedExtra: t(
-                "Vous avez déjà indiqué que vous revenez. Vous pouvez toujours retirer votre inscription au service d’attente à distance ci-dessous.",
-                "You already indicated you are returning. You can still cancel your remote waiting enrollment below.",
+                "Vous avez déjà indiqué que vous revenez. Vous pouvez toujours annuler votre demande d’attente à distance ci-dessous.",
+                "You already indicated you are returning. You can still cancel your remote waiting request below.",
             ),
             confirmReturnBtn: t("Je confirme mon retour à l’urgence", "I confirm I am returning to the emergency department"),
-            cancelRequestBtn: t("Annuler ma requête (retirer l’attente à distance)", "Cancel my request (leave remote waiting)"),
+            cancelRequestBtn: t("Annuler votre demande", "Cancel your request"),
             thanksTitle: t("Merci", "Thank you"),
             thanksWithName: (patientName: string) =>
                 t(
@@ -464,8 +464,8 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
                 ),
             thanksGeneric: t("Votre retour est enregistré.", "Your return is recorded."),
             thanksHint: t(
-                "Vous pouvez encore annuler votre inscription au service ci-dessous si vos plans changent.",
-                "You can still cancel your enrollment below if your plans change.",
+                "Vous pouvez encore annuler votre demande ci-dessous si vos plans changent.",
+                "You can still cancel your request below if your plans change.",
             ),
             removedTitle: t("Inscription retirée", "Enrollment removed"),
             removedBody: t(
@@ -520,8 +520,8 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             consentInviteP2Suffix: t(".", "."),
             openConsentPage: t("Ouvrir la page de consentement", "Open consent page"),
             confirmReturnIntro: t(
-                "Utilisez le bouton ci-dessous pour ouvrir la page sécurisée : vous pourrez confirmer votre retour à l’urgence (visible pour l’équipe) ou annuler complètement votre inscription au service d’attente à distance. Si vous choisissez d’annuler, une fenêtre de confirmation vous demandera de valider avant que la demande soit retirée.",
-                "Use the button below to open the secure page: you can confirm your return to the emergency department (visible to staff) or fully cancel your remote waiting enrollment. If you choose to cancel, a confirmation dialog will ask you to confirm before the request is withdrawn.",
+                "Utilisez le bouton ci-dessous pour ouvrir la page sécurisée : vous pourrez confirmer votre retour à l’urgence (visible pour l’équipe) ou choisir « Annuler votre demande ». Une fenêtre vous demandera alors de confirmer l’annulation avant que la demande soit retirée.",
+                "Use the button below to open the secure page: you can confirm your return to the emergency department (visible to staff) or choose “Cancel your request”. A dialog will then ask you to confirm cancellation before the request is withdrawn.",
             ),
             openConfirmPage: t("Ouvrir la page de confirmation", "Open confirmation page"),
             smsComposerPlaceholder: t("Texto", "Text message"),
@@ -595,7 +595,7 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             activityKindSearch: activityKindSearch(locale),
             causeLabel: {
                 no_show: t("Absence", "No show"),
-                consent_withdrawn: t("Retrait consentement", "Consent withdrawn"),
+                consent_withdrawn: t("Quitter attente à distance", "Left remote waiting"),
                 consent_refused: t("Refus consentement", "Consent refused"),
                 patient_cancelled_queue: t("Annul. patient (lien)", "Patient cancel (link)"),
                 staff_cancelled: t("Annul. équipe", "Staff cancelled"),
@@ -632,7 +632,7 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             minSuffix: t(" min", " min"),
             statusConsentPending: t("Consentement en attente", "Pending consent"),
             statusArrived: t("Retour confirmé", "Return confirmed"),
-            statusWithdrawn: t("Retrait du consentement", "Consent withdrawn"),
+            statusWithdrawn: t("Quitté l’attente à distance", "Left remote waiting"),
             statusRefused: t("Refus du consentement", "Consent refused"),
             statusPatientCancelled: t("Requête annulée (patient)", "Request cancelled (patient)"),
             statusStaffCancelled: (short) => t(`Annulé : ${short}`, `Cancelled: ${short}`),
