@@ -6,7 +6,7 @@ import { TextArea } from "@/components/base/textarea/textarea";
 import { useVEDLocale } from "@/lib/ved-locale";
 import { cx } from "@/utils/cx";
 import { useVersionD } from "@/pages/version-d/version-d-context";
-import { fullName } from "@/pages/version-d/version-d-shared";
+import { fullName, statusToColumn } from "@/pages/version-d/version-d-shared";
 
 type Props = {
     patientId: string | null;
@@ -25,14 +25,21 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
 
     const patient = patientId ? (patients.find((p) => p.id === patientId) ?? null) : null;
     const isOpen = Boolean(patientId && patient);
+    const noShowAllowed = patient ? statusToColumn(patient.status) !== "waiting" : true;
 
     useEffect(() => {
         if (!isOpen) {
             setMode("no_show");
             setOtherReason("");
             setOtherReasonError(false);
+            return;
         }
-    }, [isOpen]);
+        if (patient && statusToColumn(patient.status) === "waiting") {
+            setMode("other");
+        } else {
+            setMode("no_show");
+        }
+    }, [isOpen, patient]);
 
     return (
         <ModalOverlay
@@ -62,26 +69,28 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                 <fieldset className="min-w-0">
                                     <legend className="text-sm font-medium text-secondary">{sc.legend}</legend>
                                     <div className="mt-3 flex flex-col gap-3">
-                                        <label
-                                            className={cx(
-                                                "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left text-sm transition",
-                                                mode === "no_show"
-                                                    ? "border-[#8ED1FE] bg-[#E8F7FE] ring-1 ring-[#8ED1FE]"
-                                                    : "border-secondary hover:bg-secondary",
-                                            )}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="cancel-reason"
-                                                className="mt-0.5"
-                                                checked={mode === "no_show"}
-                                                onChange={() => {
-                                                    setMode("no_show");
-                                                    setOtherReasonError(false);
-                                                }}
-                                            />
-                                            <span className="text-primary">{sc.noShow}</span>
-                                        </label>
+                                        {noShowAllowed ? (
+                                            <label
+                                                className={cx(
+                                                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left text-sm transition",
+                                                    mode === "no_show"
+                                                        ? "border-[#8ED1FE] bg-[#E8F7FE] ring-1 ring-[#8ED1FE]"
+                                                        : "border-secondary hover:bg-secondary",
+                                                )}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="cancel-reason"
+                                                    className="mt-0.5"
+                                                    checked={mode === "no_show"}
+                                                    onChange={() => {
+                                                        setMode("no_show");
+                                                        setOtherReasonError(false);
+                                                    }}
+                                                />
+                                                <span className="text-primary">{sc.noShow}</span>
+                                            </label>
+                                        ) : null}
                                         <label
                                             className={cx(
                                                 "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left text-sm transition",
@@ -132,7 +141,7 @@ export function VersionDStaffCancelPatientModal({ patientId, onDismiss }: Props)
                                                 return;
                                             }
                                             setOtherReasonError(false);
-                                            if (mode === "no_show") {
+                                            if (mode === "no_show" && noShowAllowed) {
                                                 staffCancelPatient(patientId, { mode: "no_show" });
                                             } else {
                                                 staffCancelPatient(patientId, { mode: "other", reason: otherReason.trim() });
