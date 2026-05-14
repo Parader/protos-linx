@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { BRAND_POWERED_BY_AKINOX, BRAND_QUEBEC_LOGO } from "@/constants/brand-assets";
+import { useVEDLocale } from "@/lib/ved-locale";
+import { ExitDistanceServiceConfirmModal } from "@/pages/version-d/version-d-exit-distance-confirm-modal";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName, type PatientStatus } from "@/pages/version-d/version-d-shared";
 
@@ -23,9 +25,14 @@ function resolveMode(patientId: string, status: PatientStatus | null): PageMode 
 }
 
 export function VersionDConfirmReturnPage() {
+    const { strings } = useVEDLocale();
+    const pub = strings.versionD.pages.publicChrome;
+    const cr = strings.versionD.pages.confirmReturn;
+
     const { patients, confirmReturn, cancelQueueRequestFromPatient } = useVersionD();
     const [searchParams] = useSearchParams();
     const [finished, setFinished] = useState<"confirm" | "cancel" | null>(null);
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
     const patientId = searchParams.get("patientId") ?? "";
     const patient = useMemo(
@@ -39,25 +46,33 @@ export function VersionDConfirmReturnPage() {
         return resolveMode(patientId, patient?.status ?? null);
     }, [patientId, patient, finished]);
 
+    const canCancelFromPatient =
+        Boolean(patientId) && (patient?.status === "recall" || patient?.status === "arrived" || finished === "confirm");
+
     const onConfirm = () => {
         if (!patientId || patient?.status !== "recall") return;
         confirmReturn(patientId);
         setFinished("confirm");
     };
 
-    const onCancelRequest = () => {
+    const requestCancel = () => {
+        if (!canCancelFromPatient) return;
+        setCancelModalOpen(true);
+    };
+
+    const finalizeCancel = () => {
         if (!patientId) return;
-        if (patient?.status !== "recall" && patient?.status !== "arrived") return;
         cancelQueueRequestFromPatient(patientId);
         setFinished("cancel");
+        setCancelModalOpen(false);
     };
 
     return (
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-[#F9FAFB]">
             <div className="mx-auto flex w-full max-w-[680px] flex-col px-4 py-8 pb-16">
                 <header className="mb-6 text-center">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#5E6C84]">Prototype — perspective usager</p>
-                    <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#172B4D]">Rappel — urgence</h1>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#5E6C84]">{pub.prototypeBadge}</p>
+                    <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#172B4D]">{cr.pageTitle}</h1>
                 </header>
 
                 <article className="overflow-hidden rounded-2xl border border-[#E4E6EA] bg-white shadow-[0px_4px_24px_rgba(16,24,40,0.06)]">
@@ -67,12 +82,12 @@ export function VersionDConfirmReturnPage() {
                                 <div className="flex min-w-0 items-center gap-3">
                                     <img
                                         src={BRAND_QUEBEC_LOGO}
-                                        alt="Gouvernement du Québec"
+                                        alt={pub.govQuebecAlt}
                                         className="h-8 w-auto max-w-[min(100%,220px)] shrink-0 object-contain object-left sm:h-9"
                                     />
                                 </div>
                                 <div className="min-w-0 sm:pb-0.5">
-                                    <p className="text-lg font-semibold leading-snug text-[#082244]">Attente à distance — File d’attente à l’urgence</p>
+                                    <p className="text-lg font-semibold leading-snug text-[#082244]">{cr.cardTitle}</p>
                                 </div>
                             </div>
                         </div>
@@ -81,76 +96,52 @@ export function VersionDConfirmReturnPage() {
                     <div className="px-6 py-8 sm:px-8">
                         {mode.kind === "invalid_id" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Lien incomplet</h2>
-                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    Ce lien ne contient pas les informations nécessaires. Utilisez le lien reçu par message.
-                                </p>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.invalidTitle}</h2>
+                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">{cr.invalidBody}</p>
                             </>
                         ) : null}
 
                         {mode.kind === "unknown_patient" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Lien non reconnu</h2>
-                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    Nous ne trouvons pas de dossier correspondant à ce lien. Il est peut-être expiré ou la démo a été réinitialisée.
-                                </p>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.unknownTitle}</h2>
+                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">{cr.unknownBody}</p>
                             </>
                         ) : null}
 
                         {mode.kind === "completed_archived" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Dossier terminé</h2>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.completedTitle}</h2>
                                 {patient ? (
                                     <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                        Bonjour <strong>{fullName(patient)}</strong>,
+                                        {cr.completedHello} <strong>{fullName(patient)}</strong>,
                                     </p>
                                 ) : null}
-                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    Votre inscription à l’<strong className="font-medium text-[#344054]">attente à distance</strong> a été{" "}
-                                    <strong className="font-medium text-[#344054]">clôturée</strong> : le dossier figure désormais dans le statut{" "}
-                                    <strong className="font-medium text-[#344054]">terminé</strong> côté équipe de l’urgence. Ce lien de confirmation
-                                    ne permet donc plus de confirmer un retour ni d’annuler la requête en ligne.
-                                </p>
+                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">{cr.completedBody}</p>
                                 <p className="mt-4 rounded-xl border border-[#FEE4E2] bg-[#FFFBFA] px-4 py-3 text-center text-[15px] leading-relaxed text-[#B42318]">
-                                    Si vous pensez qu’il s’agit d’une <strong>erreur</strong>, ou si votre état vous inquiète,{" "}
-                                    <strong>présentez-vous en personne à l’urgence</strong> pour qu’on puisse vérifier la situation avec vous. En cas
-                                    d’urgence vitale, composez le <strong>911</strong>.
+                                    {cr.completedWarning}
                                 </p>
                             </>
                         ) : null}
 
                         {mode.kind === "ineligible" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Lien non disponible</h2>
-                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    Votre situation ne correspond pas à une demande de rappel active. Pour toute question, présentez-vous à l’urgence.
-                                </p>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.ineligibleTitle}</h2>
+                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">{cr.ineligibleBody}</p>
                             </>
                         ) : null}
 
                         {mode.kind === "ready" ? (
                             <>
                                 <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">
-                                    {mode.status === "recall" ? "Confirmez votre retour" : "Retour déjà confirmé"}
+                                    {mode.status === "recall" ? cr.readyTitleRecall : cr.readyTitleArrived}
                                 </h2>
                                 <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    {patient ? (
-                                        <>
-                                            Bonjour <strong>{fullName(patient)}</strong>, l’équipe vous demande de vous présenter à l’urgence. Les
-                                            professionnels voient votre statut dans la file lorsque vous confirmez.
-                                        </>
-                                    ) : null}
+                                    {patient ? cr.readyBodyLine(fullName(patient)) : null}
                                 </p>
                                 {mode.status === "recall" ? (
-                                    <p className="mt-3 text-center text-[15px] leading-relaxed text-[#475467]">
-                                        Si vous ne souhaitez plus être suivi à distance ou ne pouvez pas revenir pour l’instant, vous pouvez annuler
-                                        complètement votre inscription.
-                                    </p>
+                                    <p className="mt-3 text-center text-[15px] leading-relaxed text-[#475467]">{cr.readyBodyRecallExtra}</p>
                                 ) : (
-                                    <p className="mt-3 text-center text-[15px] leading-relaxed text-[#475467]">
-                                        Vous avez déjà indiqué que vous revenez. Vous pouvez toujours retirer votre inscription au service d’attente à
-                                        distance ci-dessous.
-                                    </p>
+                                    <p className="mt-3 text-center text-[15px] leading-relaxed text-[#475467]">{cr.readyBodyArrivedExtra}</p>
                                 )}
 
                                 <div className="mt-8 flex flex-col items-stretch gap-3 sm:items-center">
@@ -161,16 +152,16 @@ export function VersionDConfirmReturnPage() {
                                             className="w-full bg-[#0573D8] text-white hover:bg-[#0460B8] sm:w-auto sm:min-w-[280px]"
                                             onClick={onConfirm}
                                         >
-                                            Je confirme mon retour à l’urgence
+                                            {cr.confirmReturnBtn}
                                         </Button>
                                     ) : null}
                                     <Button
                                         color="secondary"
                                         size="md"
                                         className="w-full border border-[#FDA29B] bg-white text-[#B42318] hover:bg-[#FFFBFA] sm:w-auto sm:min-w-[280px]"
-                                        onClick={onCancelRequest}
+                                        onClick={requestCancel}
                                     >
-                                        Annuler ma requête (retirer l’attente à distance)
+                                        {cr.cancelRequestBtn}
                                     </Button>
                                 </div>
                             </>
@@ -178,27 +169,19 @@ export function VersionDConfirmReturnPage() {
 
                         {mode.kind === "done_confirm" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Merci</h2>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.thanksTitle}</h2>
                                 <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    {patient ? (
-                                        <>
-                                            <strong>{fullName(patient)}</strong>, votre retour est enregistré. L’équipe voit que vous revenez.
-                                        </>
-                                    ) : (
-                                        "Votre retour est enregistré."
-                                    )}
+                                    {patient ? cr.thanksWithName(fullName(patient)) : cr.thanksGeneric}
                                 </p>
-                                <p className="mt-3 text-center text-sm text-[#475467]">
-                                    Vous pouvez encore annuler votre inscription au service ci-dessous si vos plans changent.
-                                </p>
+                                <p className="mt-3 text-center text-sm text-[#475467]">{cr.thanksHint}</p>
                                 <div className="mt-8 flex flex-col items-stretch gap-3 sm:items-center">
                                     <Button
                                         color="secondary"
                                         size="md"
                                         className="w-full border border-[#FDA29B] bg-white text-[#B42318] hover:bg-[#FFFBFA] sm:w-auto sm:min-w-[280px]"
-                                        onClick={onCancelRequest}
+                                        onClick={requestCancel}
                                     >
-                                        Annuler ma requête (retirer l’attente à distance)
+                                        {cr.cancelRequestBtn}
                                     </Button>
                                 </div>
                             </>
@@ -206,11 +189,8 @@ export function VersionDConfirmReturnPage() {
 
                         {mode.kind === "done_cancel" ? (
                             <>
-                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">Inscription retirée</h2>
-                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">
-                                    Vous ne recevrez plus de messages liés à l’attente à distance. Pour toute urgence, présentez-vous à l’urgence ou
-                                    composez le 911.
-                                </p>
+                                <h2 className="text-center text-xl font-semibold tracking-tight text-[#172B4D]">{cr.removedTitle}</h2>
+                                <p className="mt-4 text-center text-[15px] leading-relaxed text-[#475467]">{cr.removedBody}</p>
                             </>
                         ) : null}
                     </div>
@@ -219,13 +199,20 @@ export function VersionDConfirmReturnPage() {
                         <Link to="/version-d" className="inline-flex justify-center">
                             <img
                                 src={BRAND_POWERED_BY_AKINOX}
-                                alt="Propulsé par Akinox"
+                                alt={pub.poweredByAkinoxAlt}
                                 className="h-[34px] w-auto max-w-full object-contain"
                             />
                         </Link>
                     </footer>
                 </article>
             </div>
+
+            <ExitDistanceServiceConfirmModal
+                isOpen={cancelModalOpen}
+                onOpenChange={setCancelModalOpen}
+                variant="cancel_recall_request"
+                onConfirm={finalizeCancel}
+            />
         </main>
     );
 }

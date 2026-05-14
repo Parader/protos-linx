@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heading } from "react-aria-components";
 import { Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { MESSAGE_TEMPLATE_ORDER } from "@/lib/ved-app-strings/version-cd-pages";
+import { getVersionCStringBundle } from "@/lib/ved-app-strings/version-c-bundle";
 import { useVEDLocale } from "@/lib/ved-locale";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { fullName } from "@/pages/version-d/version-d-shared";
@@ -15,7 +16,7 @@ type Props = {
 };
 
 export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Props) {
-    const { strings, locale } = useVEDLocale();
+    const { strings } = useVEDLocale();
     const { patients, sendStaffMessage } = useVersionD();
     const msg = strings.versionD.pages.messagingSingle;
     const templates = strings.versionD.pages.messageTemplates;
@@ -25,11 +26,19 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
     const patient = patientId ? patients.find((p) => p.id === patientId) ?? null : null;
     const isOpen = Boolean(patientId && patient);
 
+    const patientTemplates = useMemo(
+        () =>
+            patient
+                ? getVersionCStringBundle(patient.communicationLanguage ?? "fr").pages.messageTemplates
+                : templates,
+        [patient, templates],
+    );
+
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || !patient) return;
         setMessageTemplate("abnormal_delays");
-        setMessageBody(staffMessageTemplateBody(templates, "abnormal_delays"));
-    }, [isOpen, patientId, locale, templates]);
+        setMessageBody(staffMessageTemplateBody(patientTemplates, "abnormal_delays"));
+    }, [isOpen, patient?.id, patient?.communicationLanguage, patientTemplates]);
 
     return (
         <ModalOverlay
@@ -75,13 +84,13 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
                                         onChange={(e) => {
                                             const next = e.target.value as MessageTemplateId;
                                             setMessageTemplate(next);
-                                            if (next !== "custom") setMessageBody(staffMessageTemplateBody(templates, next));
+                                            if (next !== "custom") setMessageBody(staffMessageTemplateBody(patientTemplates, next));
                                             else setMessageBody("");
                                         }}
                                     >
                                         {MESSAGE_TEMPLATE_ORDER.filter((id) => id !== "custom").map((id) => (
                                             <option key={id} value={id}>
-                                                {templates[id].label}
+                                                {patientTemplates[id].label}
                                             </option>
                                         ))}
                                         <option value="custom">{msg.customOption}</option>
@@ -111,12 +120,14 @@ export function VersionDSinglePatientMessageModal({ patientId, onDismiss }: Prop
                                             size="md"
                                             isDisabled={!patientId || messageBody.trim().length === 0}
                                             onClick={() => {
-                                                if (!patientId) return;
-                                                const p = patients.find((x) => x.id === patientId);
-                                                if (!p) return;
-                                                const body = messageBody.trim();
-                                                if (p.phone?.trim()) sendStaffMessage(patientId, "sms", body);
-                                                if (p.email?.trim()) sendStaffMessage(patientId, "email", body);
+                                                if (!patientId || !patient) return;
+                                                const body =
+                                                    messageTemplate === "custom"
+                                                        ? messageBody.trim()
+                                                        : staffMessageTemplateBody(patientTemplates, messageTemplate);
+                                                if (!body) return;
+                                                if (patient.phone?.trim()) sendStaffMessage(patientId, "sms", body);
+                                                if (patient.email?.trim()) sendStaffMessage(patientId, "email", body);
                                                 onDismiss();
                                                 close();
                                             }}

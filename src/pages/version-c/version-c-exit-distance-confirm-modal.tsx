@@ -19,6 +19,8 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
     const confirmLabel = variant === "refuse" ? ex.refuseConfirm : ex.withdrawConfirm;
     const body = variant === "refuse" ? ex.bodyRefuse : ex.bodyWithdraw;
 
+    const dismissLabel = variant === "refuse" ? ex.exitGoBack : ex.exitKeepEnrollment;
+
     return (
         <ModalOverlay isDismissable isOpen={isOpen} onOpenChange={onOpenChange}>
             <Modal>
@@ -34,7 +36,7 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                 <p className="text-[15px] leading-relaxed text-[#475467]">{body}</p>
                                 <p className="mt-4 text-[15px] leading-relaxed text-[#475467]">{ex.footerInPerson}</p>
                             </div>
-                            <div className="flex flex-col gap-2 border-t border-[#EEF0F4] px-6 py-4 sm:flex-row sm:justify-start">
+                            <div className="flex flex-col gap-2 border-t border-[#EEF0F4] px-6 py-4 sm:flex-row sm:justify-start sm:gap-3">
                                 <Button
                                     color="primary-destructive"
                                     size="md"
@@ -47,8 +49,8 @@ export function ExitDistanceServiceConfirmModal({ isOpen, onOpenChange, variant,
                                 >
                                     {confirmLabel}
                                 </Button>
-                                <Button color="tertiary" size="md" className="w-full sm:w-auto" onClick={close}>
-                                    {ex.cancel}
+                                <Button color="secondary" size="md" className="w-full sm:w-auto" onClick={close}>
+                                    {dismissLabel}
                                 </Button>
                             </div>
                         </div>

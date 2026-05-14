@@ -247,6 +247,7 @@ export function VersionCAddPatientModalClassic() {
                                                 );
                                             })}
                                         </div>
+                                        <p className="mt-1 text-xs leading-snug text-[#667085]">{d.commLanguageHint}</p>
                                     </div>
                                     {showContactError ? (
                                         <p className="text-sm font-medium text-[#B42318]">{c.contactError}</p>

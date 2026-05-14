@@ -404,6 +404,7 @@ export function VersionDAddPatientModalWizard() {
                                                             );
                                                         })}
                                                     </div>
+                                                    <p className="mt-1 text-xs leading-snug text-[#667085]">{w.commLanguageHint}</p>
                                                 </div>
                                                 {showContactError ? (
                                                     <p className="mt-3 text-sm font-medium text-[#B42318]">{w.contactError}</p>

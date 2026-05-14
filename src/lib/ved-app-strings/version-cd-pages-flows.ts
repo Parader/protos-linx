@@ -31,6 +31,8 @@ export type VersionCdPagesFlows = {
         cancelAppointmentButton: string;
     };
     consentD: {
+        /** Titre H1 de la page consentement (Version D). */
+        pageHeading: string;
         refuseButton: string;
         /** Paragraphs same as C for main consent flow — reuse bodyParagraphs from consentC in component or duplicate EN */
         bodyParagraphs: [string, string, string, string];
@@ -291,7 +293,10 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             "En appuyant sur le bouton « J’accepte », vous attestez avoir pris connaissance des modalités qui vous sont présentées et consentez à utiliser ce service d’attente à distance pour la file d’attente à l’urgence.",
             "By clicking “I agree”, you confirm you have read the terms presented and agree to use this remote waiting service for the emergency department queue.",
         ),
-        bodyC[3]!,
+        t(
+            "Vous pouvez annuler votre demande d’inscription avant d’avoir accepté. Après acceptation, vous pourrez retirer votre consentement en accédant de nouveau à cette même page au moyen du lien qui vous a été communiqué.",
+            "You may cancel your enrollment request before accepting. After accepting, you may withdraw consent by returning to this same page using the link you were given.",
+        ),
     ];
 
     return {
@@ -341,6 +346,7 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             cancelAppointmentButton: t("Annuler le rendez-vous", "Cancel enrollment"),
         },
         consentD: {
+            pageHeading: t("Consentement éclairé", "Informed consent"),
             refuseButton: t("Annuler le rendez-vous", "Cancel enrollment"),
             bodyParagraphs: bodyD,
             accept: t("J’accepte", "I agree"),
@@ -514,8 +520,8 @@ export function getVersionCdPagesFlows(locale: VEDLocale): VersionCdPagesFlows {
             consentInviteP2Suffix: t(".", "."),
             openConsentPage: t("Ouvrir la page de consentement", "Open consent page"),
             confirmReturnIntro: t(
-                "Utilisez le bouton ci-dessous pour ouvrir la page sécurisée : vous pourrez confirmer votre retour à l’urgence (visible pour l’équipe) ou annuler complètement votre inscription au service d’attente à distance.",
-                "Use the button below to open the secure page: you can confirm your return to the emergency department (visible to staff) or fully cancel remote waiting enrollment.",
+                "Utilisez le bouton ci-dessous pour ouvrir la page sécurisée : vous pourrez confirmer votre retour à l’urgence (visible pour l’équipe) ou annuler complètement votre inscription au service d’attente à distance. Si vous choisissez d’annuler, une fenêtre de confirmation vous demandera de valider avant que la demande soit retirée.",
+                "Use the button below to open the secure page: you can confirm your return to the emergency department (visible to staff) or fully cancel your remote waiting enrollment. If you choose to cancel, a confirmation dialog will ask you to confirm before the request is withdrawn.",
             ),
             openConfirmPage: t("Ouvrir la page de confirmation", "Open confirmation page"),
             smsComposerPlaceholder: t("Texto", "Text message"),

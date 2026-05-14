@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useVEDLocale } from "@/lib/ved-locale";
-import type { VersionCStringBundle } from "@/lib/ved-app-strings/version-c-bundle";
+import { getVersionCStringBundle, type VersionCStringBundle } from "@/lib/ved-app-strings/version-c-bundle";
 import {
     comparePatientsByArrivalAsc,
     comparePatientsCompletedDesc,
@@ -137,6 +137,11 @@ function consentPagePath(patientId: string) {
 function consentAbsoluteUrl(patientId: string) {
     if (typeof window === "undefined") return consentPagePath(patientId);
     return `${window.location.origin}${consentPagePath(patientId)}`;
+}
+
+/** SMS / courriels automatisés au patient : langue choisie à l’inscription (pas la langue d’affichage du personnel). */
+function stringsForPatientCommunication(p: Pick<Patient, "communicationLanguage">): VersionCStringBundle {
+    return getVersionCStringBundle(p.communicationLanguage ?? "fr");
 }
 
 function confirmReturnPagePath(patientId: string) {
@@ -365,12 +370,12 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             if (next !== "recall") return;
 
             const confirmUrl = confirmReturnAbsoluteUrl(patientId);
-            const body = vc.notifications.recallPresentToErBody(confirmUrl);
+            const body = stringsForPatientCommunication(p).notifications.recallPresentToErBody(confirmUrl);
             for (const ch of channels) {
                 sendStaffMessage(patientId, ch, body, { actionUrl: confirmUrl });
             }
         },
-        [patients, sendStaffMessage, vc],
+        [patients, sendStaffMessage],
     );
 
     const acceptConsent = useCallback(
@@ -443,11 +448,11 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             setPatients((prev) =>
                 movePatientToStatus(prev, patientId, "completed", { cancelled: true, completionCause }),
             );
-            const revokeMsg = vc.notifications.revokeRemoteService;
+            const revokeMsg = stringsForPatientCommunication(p).notifications.revokeRemoteService;
             if (p.phone?.trim()) sendStaffMessage(patientId, "sms", revokeMsg);
             if (p.email?.trim()) sendStaffMessage(patientId, "email", revokeMsg);
         },
-        [appendActivityLog, setPatients, sendStaffMessage, vc],
+        [appendActivityLog, setPatients, sendStaffMessage],
     );
 
     const cancelQueueRequestFromPatient = useCallback(
@@ -621,7 +626,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 fileNumber,
                 phone,
                 email,
-                communicationLanguage: "fr",
+                communicationLanguage: (Math.random() > 0.5 ? "en" : "fr") as CommunicationLanguage,
                 reason: pick(REASONS),
                 notes: pick(NOTES) || undefined,
                 priority,
@@ -642,8 +647,9 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
             detail: vc.activity.demoPatientsDetail,
         });
         for (const p of created) {
-            sendConsentInvites(vc, appendNotification, p);
-            sendManualConsentEnrollmentNotifications(vc, appendNotification, p);
+            const msgVc = stringsForPatientCommunication(p);
+            sendConsentInvites(msgVc, appendNotification, p);
+            sendManualConsentEnrollmentNotifications(msgVc, appendNotification, p);
         }
     }, [appendActivityLog, selectedPatientId, appendNotification, vc]);
 
@@ -683,10 +689,11 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         });
 
         // Seed initial notifications for the demo.
+        const msgVc = stringsForPatientCommunication(patient);
         if (status === "consentPending") {
-            sendConsentInvites(vc, appendNotification, patient);
+            sendConsentInvites(msgVc, appendNotification, patient);
         } else {
-            sendManualConsentEnrollmentNotifications(vc, appendNotification, patient);
+            sendManualConsentEnrollmentNotifications(msgVc, appendNotification, patient);
         }
 
         setForm({
@@ -739,7 +746,7 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
         );
 
         if (becameManualWaiting && edited) {
-            sendManualConsentEnrollmentNotifications(vc, appendNotification, {
+            const updatedPatient: Patient = {
                 ...edited,
                 firstName: form.firstName.trim() || edited.firstName,
                 lastName: form.lastName.trim() || edited.lastName,
@@ -752,7 +759,8 @@ export function VersionDProvider({ children }: { children: ReactNode }) {
                 priority: form.priority,
                 consentManagedManually: true,
                 status: "waiting",
-            });
+            };
+            sendManualConsentEnrollmentNotifications(stringsForPatientCommunication(updatedPatient), appendNotification, updatedPatient);
         }
         const nextName = `${form.firstName.trim() || edited?.firstName || ""} ${form.lastName.trim() || edited?.lastName || ""}`.trim();
         appendActivityLog({

@@ -4,6 +4,7 @@ import { Mail01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { MESSAGE_TEMPLATE_ORDER } from "@/lib/ved-app-strings/version-cd-pages";
+import { getVersionCStringBundle } from "@/lib/ved-app-strings/version-c-bundle";
 import { useVEDLocale } from "@/lib/ved-locale";
 import { useVersionD } from "@/pages/version-d/version-d-context";
 import { staffMessageTemplateBody, type MessageTemplateId } from "@/pages/version-d/version-d-staff-message-templates";
@@ -114,7 +115,10 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                     <div className="flex justify-start">
                                         <Button
                                             size="md"
-                                            isDisabled={patients.length === 0 || messageBody.trim().length === 0}
+                                            isDisabled={
+                                                patients.length === 0 ||
+                                                (messageTemplate === "custom" ? messageBody.trim().length === 0 : false)
+                                            }
                                             onClick={() => {
                                                 const ids =
                                                     messageTarget === "all"
@@ -128,8 +132,17 @@ export function VersionDWorklistBulkMessageModal({ isOpen, onOpenChange }: Props
                                                 for (const id of ids) {
                                                     const p = patients.find((x) => x.id === id);
                                                     if (!p) continue;
-                                                    if (p.phone?.trim()) sendStaffMessage(id, "sms", messageBody);
-                                                    if (p.email?.trim()) sendStaffMessage(id, "email", messageBody);
+                                                    const body =
+                                                        messageTemplate === "custom"
+                                                            ? messageBody.trim()
+                                                            : staffMessageTemplateBody(
+                                                                  getVersionCStringBundle(p.communicationLanguage ?? "fr").pages
+                                                                      .messageTemplates,
+                                                                  messageTemplate,
+                                                              );
+                                                    if (!body) continue;
+                                                    if (p.phone?.trim()) sendStaffMessage(id, "sms", body);
+                                                    if (p.email?.trim()) sendStaffMessage(id, "email", body);
                                                 }
                                                 onOpenChange(false);
                                                 close();

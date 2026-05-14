@@ -59,14 +59,25 @@ export type VersionCdPagesCore = {
         refuseTitle: string;
         withdrawTitle: string;
         cancelManualTitle: string;
+        /** Annulation avant acceptation du consentement (bouton « annuler le rendez-vous » — Version D). */
+        cancelBeforeConsentTitle: string;
+        /** Annulation depuis la page rappel / retour confirmé (Version D). */
+        cancelRecallTitle: string;
         refuseConfirm: string;
         withdrawConfirm: string;
         cancelManualConfirm: string;
-        cancel: string;
+        cancelBeforeConsentConfirm: string;
+        cancelRecallConfirm: string;
         bodyRefuse: string;
         bodyWithdraw: string;
         bodyCancelManual: string;
+        bodyCancelBeforeConsent: string;
+        bodyCancelRecall: string;
         footerInPerson: string;
+        /** Fermer sans quitter (refus avant inscription, ou abandon de la fenêtre). */
+        exitGoBack: string;
+        /** Fermer sans quitter le service lorsqu’on est déjà inscrit / en suivi. */
+        exitKeepEnrollment: string;
     };
     messagingBulk: {
         title: string;
@@ -130,6 +141,7 @@ export type VersionCdPagesCore = {
         mobilePh: string;
         emailPh: string;
         commLanguage: string;
+        commLanguageHint: string;
         langFr: string;
         langEn: string;
         contactError: string;
@@ -192,6 +204,7 @@ export type VersionCdPagesCore = {
     classicAddPatientD: {
         contactSection: string;
         commLanguage: string;
+        commLanguageHint: string;
         langFr: string;
         langEn: string;
         priority: string;
@@ -322,12 +335,15 @@ export function getVersionCdPagesCore(locale: VEDLocale): VersionCdPagesCore {
         },
         exitDistance: {
             refuseTitle: t("Refuser le consentement", "Refuse consent"),
-            withdrawTitle: t("Retirer le consentement", "Withdraw consent"),
-            cancelManualTitle: t("Annuler le rendez-vous", "Cancel enrollment"),
+            withdrawTitle: t("Quitter le suivi à distance ?", "Leave remote follow-up?"),
+            cancelManualTitle: t("Quitter l’attente à distance ?", "Leave remote waiting?"),
+            cancelBeforeConsentTitle: t("Quitter votre demande ?", "Cancel your request?"),
+            cancelRecallTitle: t("Quitter l’attente à distance ?", "Leave remote waiting?"),
             refuseConfirm: t("Confirmer le refus", "Confirm refusal"),
-            withdrawConfirm: t("Confirmer le retrait", "Confirm withdrawal"),
-            cancelManualConfirm: t("Confirmer l’annulation", "Confirm cancellation"),
-            cancel: t("Annuler", "Cancel"),
+            withdrawConfirm: t("Quitter le suivi à distance", "Leave remote follow-up"),
+            cancelManualConfirm: t("Quitter l’attente à distance", "Leave remote waiting"),
+            cancelBeforeConsentConfirm: t("Quitter l’attente à distance", "Leave remote waiting"),
+            cancelRecallConfirm: t("Quitter l’attente à distance", "Leave remote waiting"),
             bodyRefuse: t(
                 "En refusant, vous n’êtes pas inscrit au service de rappel et de suivi à distance et vous ne recevrez pas de messages liés à la file d’attente virtuelle.",
                 "If you refuse, you are not enrolled in recall and remote follow-up, and you will not receive messages related to the virtual waiting queue.",
@@ -340,10 +356,20 @@ export function getVersionCdPagesCore(locale: VEDLocale): VersionCdPagesCore {
                 "En annulant, vous êtes retiré de la file d’attente à distance : vous ne recevrez plus de messages de suivi liés à cette inscription. Pour toute évaluation ou soins, vous devrez vous présenter en personne à l’urgence.",
                 "If you cancel, you are removed from the remote waiting queue: you will no longer receive follow-up messages for this enrollment. For any assessment or care, you must present in person at the emergency department.",
             ),
+            bodyCancelBeforeConsent: t(
+                "En annulant maintenant, votre demande d’inscription à l’attente à distance n’est pas poursuivie : vous ne serez pas ajouté à la file virtuelle et vous ne recevrez pas de messages de suivi liés à ce service.",
+                "If you cancel now, your remote waiting enrollment request will not proceed: you will not be added to the virtual queue and you will not receive follow-up messages for this service.",
+            ),
+            bodyCancelRecall: t(
+                "En confirmant, vous mettez fin à votre inscription au service d’attente à distance : l’équipe ne pourra plus vous suivre par ce canal et vous ne recevrez plus de rappels ni de messages liés à cette inscription. Pour toute urgence ou soins, présentez-vous en personne à l’urgence.",
+                "If you confirm, your remote waiting enrollment ends: the team can no longer follow you through this channel and you will no longer receive recalls or messages for this enrollment. For emergencies or care, go to the emergency department in person.",
+            ),
             footerInPerson: t(
                 "Pour toute évaluation ou suite à donner à votre situation, vous devrez vous présenter en personne à l’urgence.",
                 "For any assessment or next steps for your situation, you must present in person at the emergency department.",
             ),
+            exitGoBack: t("Retour", "Go back"),
+            exitKeepEnrollment: t("Conserver mon inscription", "Keep my enrollment"),
         },
         messagingBulk: {
             title: t("Envoyer un message", "Send a message"),
@@ -417,6 +443,10 @@ export function getVersionCdPagesCore(locale: VEDLocale): VersionCdPagesCore {
             mobilePh: t("(514) 555-0123", "(514) 555-0123"),
             emailPh: t("courriel@exemple.com", "email@example.com"),
             commLanguage: t("Langue de communication", "Communication language"),
+            commLanguageHint: t(
+                "Cette langue est utilisée pour les messages texto (SMS) et les courriels automatisés envoyés au patient (invitation, rappel, etc.).",
+                "This language is used for automated text messages (SMS) and emails sent to the patient (invitation, recall, etc.).",
+            ),
             langFr: t("Français", "French"),
             langEn: t("Anglais", "English"),
             contactError: t("Indiquez un mobile ou un courriel (au moins l’un des deux).", "Provide a mobile number or an email (at least one)."),
@@ -514,6 +544,10 @@ export function getVersionCdPagesCore(locale: VEDLocale): VersionCdPagesCore {
         classicAddPatientD: {
             contactSection: t("Contacter le patient", "Contact the patient"),
             commLanguage: t("Langue de communication", "Communication language"),
+            commLanguageHint: t(
+                "Cette langue est utilisée pour les messages texto (SMS) et les courriels automatisés envoyés au patient (invitation, rappel, etc.).",
+                "This language is used for automated text messages (SMS) and emails sent to the patient (invitation, recall, etc.).",
+            ),
             langFr: t("Français", "French"),
             langEn: t("Anglais", "English"),
             priority: t("Priorité", "Priority"),
